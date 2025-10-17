@@ -141,7 +141,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   }, [scno, selectedDate, viewMode, yearEnabled, activeDayType])
 
   const options = {
-    chart: { type: 'area', height: 400 },
+    chart: { type: 'area', height: 350 },
     title: { text: null },
     xAxis: {
       categories,

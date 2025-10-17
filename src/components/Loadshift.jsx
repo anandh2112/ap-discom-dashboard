@@ -53,6 +53,11 @@ export default function Loadshift() {
       type: 'area',
       height: 400,
       backgroundColor: 'transparent',
+      animations: {
+        enabled: true,
+        easing: 'easeInOut',
+        speed: 800
+      }
     },
     title: {
       text: `Load Shift Simulation (${shiftPercent}% Shift)`,
@@ -106,22 +111,57 @@ export default function Loadshift() {
     plotOptions: {
       area: {
         marker: { enabled: false },
-        fillOpacity: 0.4,
-        lineWidth: 2,
+        fillOpacity: 0.7,
+        lineWidth: 3,
+        states: {
+          hover: {
+            lineWidth: 4,
+            fillOpacity: 0.9
+          }
+        }
       },
+      series: {
+        marker: { enabled: false },
+        lineWidth: 3,
+        states: {
+          hover: {
+            lineWidth: 4
+          }
+        }
+      }
     },
     series: [
       {
         name: 'Actual Load',
         data: actualSeries,
-        color: '#007bff',
+        color: '#6A42B2', // Updated color
         zIndex: 2,
+        fillColor: {
+          linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+          stops: [
+            [0, 'rgba(106, 66, 178, 0.8)'],   // Strong color at top
+            [0.3, 'rgba(106, 66, 178, 0.5)'], // Medium opacity
+            [0.6, 'rgba(106, 66, 178, 0.2)'], // Light opacity
+            [0.8, 'rgba(106, 66, 178, 0.1)'], // Very light
+            [1, 'rgba(255, 255, 255, 0)']     // Transparent white at bottom
+          ]
+        }
       },
       {
         name: `Shifted Load (${shiftPercent}%)`,
         data: shiftedSeries,
-        color: '#00c853',
+        color: '#13C4A9', // Updated color
         zIndex: 1,
+        fillColor: {
+          linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+          stops: [
+            [0, 'rgba(19, 196, 169, 0.8)'],   // Strong color at top
+            [0.3, 'rgba(19, 196, 169, 0.5)'], // Medium opacity
+            [0.6, 'rgba(19, 196, 169, 0.2)'], // Light opacity
+            [0.8, 'rgba(19, 196, 169, 0.1)'], // Very light
+            [1, 'rgba(19, 196, 169, 0.1)']     // Transparent white at bottom
+          ]
+        }
       },
     ],
     credits: { enabled: false },

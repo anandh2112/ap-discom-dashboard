@@ -7,25 +7,63 @@ if (Highcharts?.Chart?.prototype?.credits) {
   Highcharts.Chart.prototype.credits = function () {}
 }
 
-export default function ConsumerTOD() {
+export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Dummy consumption values
-    setTimeout(() => {
-      setData([
-        { name: 'Peak Slot 1', y: 35 },
-        { name: 'Peak Slot 2', y: 25 },
-        { name: 'Regular', y: 30 },
-        { name: 'Normal', y: 10 },
-      ])
-    }, 300)
-  }, [])
+    if (!scno || !selectedDate) return
+
+    const fetchTODData = async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        let url = ''
+
+        // For now, only "Day" viewMode is supported
+        if (viewMode === 'Day') {
+          url = `/api/fetchDailyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+        } else {
+          console.warn(`Unsupported viewMode: ${viewMode}`)
+          setData([])
+          setLoading(false)
+          return
+        }
+
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`)
+        }
+
+        const result = await response.json()
+
+        // Transform API result into Highcharts-compatible format
+        const formattedData = Object.entries(result).map(([name, value]) => ({
+          name,
+          y: Number(value),
+        }))
+
+        setData(formattedData)
+      } catch (err) {
+        console.error('Failed to fetch TOD data:', err)
+        setError('Failed to load TOD data.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTODData()
+  }, [scno, selectedDate, viewMode])
 
   const todOptions = {
-    chart: { type: 'pie', height: 400, backgroundColor: 'transparent' },
-    title: { text: 'Consumer TOD', style: { fontSize: '16px', fontWeight: '600' } },
-    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y} kW)' },
+    chart: { type: 'pie', height: 350, backgroundColor: 'transparent' },
+    title: {
+      text: 'Consumer TOD',
+      style: { fontSize: '16px', fontWeight: '600' },
+    },
+    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} kWh)' },
     accessibility: { point: { valueSuffix: '%' } },
     plotOptions: {
       pie: {
@@ -33,14 +71,19 @@ export default function ConsumerTOD() {
         cursor: 'pointer',
         dataLabels: { enabled: false },
         showInLegend: true,
+        center: ['40%', '50%'], // shift pie slightly left to make room for legend
       },
     },
     legend: {
-      align: 'center',
-      verticalAlign: 'bottom',
-      layout: 'horizontal',
-      itemMarginTop: 5,
-      itemMarginBottom: 5,
+      align: 'right',
+      verticalAlign: 'middle',
+      layout: 'vertical',
+      itemMarginTop: 10,
+      itemMarginBottom: 10,
+      itemStyle: {
+        fontSize: '12px',
+        fontWeight: '400',
+      },
     },
     series: [
       {
@@ -55,7 +98,19 @@ export default function ConsumerTOD() {
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md h-full">
-      <HighchartsReact highcharts={Highcharts} options={todOptions} />
+      {loading ? (
+        <div className="text-center text-gray-500 text-sm py-10">
+          Loading TOD data...
+        </div>
+      ) : error ? (
+        <div className="text-center text-red-500 text-sm py-10">{error}</div>
+      ) : data.length === 0 ? (
+        <div className="text-center text-gray-400 text-sm py-10">
+          No TOD data available.
+        </div>
+      ) : (
+        <HighchartsReact highcharts={Highcharts} options={todOptions} />
+      )}
     </div>
   )
 }

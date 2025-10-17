@@ -9,7 +9,7 @@ export default function ConsumerInfo({ consumerName, scno }) {
         </div>
       ),
     },
-    { title: 'Consumption (kW)', value: '420' },
+    { title: 'Consumption (Wh)', value: '420' },
     { title: 'Cost (₹)', value: '12,500' },
     { title: 'CO₂ Emissions', value: '35 kg' },
   ]

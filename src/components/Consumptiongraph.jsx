@@ -188,7 +188,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       {/* Header with Toggle */}
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800">{headerText}</h2>
         <div className="flex items-center gap-1 sm:gap-2">
           {['consumption', 'cost'].map((type) => (
