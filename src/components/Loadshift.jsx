@@ -10,123 +10,135 @@ if (Highcharts?.Chart?.prototype?.credits) {
 export default function Loadshift() {
   const [loading, setLoading] = useState(true)
   const [consumptionData, setConsumptionData] = useState([])
-  const [costData, setCostData] = useState([])
-  const [shiftPercent, setShiftPercent] = useState(25)
+  const [shiftPercent, setShiftPercent] = useState(10) // Default changed to 10%
 
   useEffect(() => {
-    // Simulate loading and dummy hourly data
+    // Simulate smooth hourly data (linear)
     setTimeout(() => {
       const dummyConsumption = [
-        { hour: '00', consumption: 40 },
-        { hour: '02', consumption: 55 },
-        { hour: '04', consumption: 60 },
-        { hour: '06', consumption: 75 },
-        { hour: '08', consumption: 90 },
-        { hour: '10', consumption: 110 },
-        { hour: '12', consumption: 105 },
-        { hour: '14', consumption: 95 },
-        { hour: '16', consumption: 85 },
-        { hour: '18', consumption: 120 },
-        { hour: '20', consumption: 130 },
-        { hour: '22', consumption: 90 },
-      ]
-
-      const dummyCost = dummyConsumption.map((d) => ({
-        hour: d.hour,
-        cost: d.consumption * 0.5 + Math.random() * 10, // simulate variation
+        40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 115, 120,
+        115, 110, 100, 90, 95, 110, 120, 130, 125, 110, 80, 60,
+      ].map((val, hour) => ({
+        hour: hour.toString().padStart(2, '0'),
+        consumption: val,
       }))
-
       setConsumptionData(dummyConsumption)
-      setCostData(dummyCost)
       setLoading(false)
-    }, 800)
+    }, 600)
   }, [])
 
-  if (loading) return <p className="text-gray-500 text-sm">Loading Load Shift data...</p>
+  if (loading)
+    return <p className="text-gray-500 text-sm">Loading Load Shift data...</p>
 
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
 
-  const getBarColor = (hour) => {
-    if ((hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 21)) return '#F99B97' // Peak
-    if ((hour >= 10 && hour <= 14) || (hour >= 0 && hour <= 5)) return '#A5D6A7' // Off-Peak
-    return '#FFD08C' // Normal
-  }
-
-  const getTimeSlot = (hour) => {
-    if ((hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 21)) return 'Peak'
-    if ((hour >= 10 && hour <= 14) || (hour >= 0 && hour <= 5)) return 'Off-Peak'
-    return 'Normal'
-  }
-
-  const consumptionSeries = hours.map((h) => {
+  // Actual load
+  const actualSeries = hours.map((h) => {
     const entry = consumptionData.find((d) => d.hour === h)
     return entry ? entry.consumption : 0
   })
 
-  const costSeries = hours.map((h) => {
-    const entry = costData.find((d) => d.hour === h)
-    return entry ? entry.cost : 0
+  // Shifted load (simulate demand shift)
+  const shiftedSeries = actualSeries.map((val, idx) => {
+    if ((idx >= 6 && idx <= 10) || (idx >= 18 && idx <= 22)) {
+      return val * (1 - shiftPercent / 100)
+    } else if ((idx >= 0 && idx <= 5) || (idx >= 11 && idx <= 15)) {
+      return val * (1 + shiftPercent / 200)
+    }
+    return val
   })
 
-  const barColors = hours.map((h) => getBarColor(parseInt(h)))
-
   const options = {
-    chart: { height: 400, backgroundColor: 'transparent' },
-    title: { text: 'Load Shift (Dummy Data)', style: { fontSize: '16px' } },
-    xAxis: { categories: hours, title: { text: 'Hour of Day' } },
-    yAxis: [
-      { title: { text: 'Load (kW)' }, opposite: false },
-      { title: { text: 'Cost (₹)' }, opposite: true },
-    ],
+    chart: {
+      type: 'area',
+      height: 400,
+      backgroundColor: 'transparent',
+    },
+    title: {
+      text: `Load Shift Simulation (${shiftPercent}% Shift)`,
+      style: { fontSize: '16px' },
+    },
+    xAxis: {
+      categories: hours,
+      title: { text: 'Hour of Day' },
+      gridLineWidth: 0,
+      // Highlight new peak hours
+      plotBands: [
+        {
+          from: 6,
+          to: 10,
+          color: 'rgba(255, 99, 71, 0.15)', // light red tint for morning peak
+          label: {
+            text: 'Morning Peak',
+            style: { color: '#555', fontSize: '11px' },
+            y: -5,
+          },
+        },
+        {
+          from: 18,
+          to: 22,
+          color: 'rgba(255, 99, 71, 0.15)', // light red tint for evening peak
+          label: {
+            text: 'Evening Peak',
+            style: { color: '#555', fontSize: '11px' },
+            y: -5,
+          },
+        },
+      ],
+    },
+    yAxis: {
+      title: { text: 'Consumption (kW)' },
+      gridLineDashStyle: 'Dash',
+    },
     tooltip: {
       shared: true,
       formatter: function () {
         const hour = this.x
-        const cons = consumptionSeries[hour] || 0
-        const cost = costSeries[hour] || 0
-        const slot = getTimeSlot(parseInt(hour))
-        return `<b>${hour}:00</b> (${slot})<br/>Load: <b>${cons.toFixed(
-          2
-        )} kW</b><br/>Cost: <b>₹${cost.toFixed(2)}</b>`
+        const actual = actualSeries[parseInt(hour)] || 0
+        const shifted = shiftedSeries[parseInt(hour)] || 0
+        const diff = actual - shifted
+        return `<b>${hour}:00</b><br/>
+          Actual Load: <b>${actual.toFixed(2)} kW</b><br/>
+          Shifted Load: <b>${shifted.toFixed(2)} kW</b><br/>
+          Reduction: <b>${diff.toFixed(2)} kW</b>`
+      },
+    },
+    plotOptions: {
+      area: {
+        marker: { enabled: false },
+        fillOpacity: 0.4,
+        lineWidth: 2,
       },
     },
     series: [
       {
-        type: 'line',
-        name: 'Load (kW)',
-        data: consumptionSeries,
+        name: 'Actual Load',
+        data: actualSeries,
         color: '#007bff',
-        yAxis: 0,
-        zIndex: 1,
-        marker: { enabled: false },
+        zIndex: 2,
       },
       {
-        type: 'column',
-        name: 'Cost (₹)',
-        data: costSeries.map((val, idx) => ({
-          y: val,
-          color: barColors[idx],
-        })),
-        yAxis: 1,
-        zIndex: 0,
+        name: `Shifted Load (${shiftPercent}%)`,
+        data: shiftedSeries,
+        color: '#00c853',
+        zIndex: 1,
       },
     ],
     credits: { enabled: false },
-    legend: { enabled: false },
+    legend: { enabled: true },
   }
 
-  // Dummy summary data
+  // Added costBefore and costAfter fields
   const summaryData = [
-    { percent: 10, before: 320, after: 290, savings: 1200, emission: 8.4 },
-    { percent: 25, before: 340, after: 270, savings: 2800, emission: 18.5 },
-    { percent: 50, before: 360, after: 240, savings: 5600, emission: 34.2 },
+    { percent: 10, before: 320, after: 290, costBefore: 14500, costAfter: 13200, savings: 1200, emission: 8.4 },
+    { percent: 25, before: 340, after: 270, costBefore: 15200, costAfter: 12600, savings: 2800, emission: 18.5 },
+    { percent: 50, before: 360, after: 240, costBefore: 16000, costAfter: 11800, savings: 5600, emission: 34.2 },
   ]
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       {/* Header with toggle buttons */}
       <div className="flex justify-end items-center mb-1">
-        {/* Right-side toggle buttons for shift % */}
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-600">Shift %:</span>
           <div className="flex bg-gray-100 rounded-lg border overflow-hidden">
@@ -147,40 +159,33 @@ export default function Loadshift() {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Area Chart */}
       <HighchartsReact highcharts={Highcharts} options={options} />
-
-      {/* Custom Legend */}
-      <div className="flex items-center justify-center mt-1 space-x-4">
-        <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-blue-500 inline-block"></span>
-          <span className="text-sm text-gray-700">Load (kW)</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#F99B97] inline-block"></span>
-          <span className="text-sm text-gray-700">Cost Peak (₹)</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#FFD08C] inline-block"></span>
-          <span className="text-sm text-gray-700">Cost Normal (₹)</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#A5D6A7] inline-block"></span>
-          <span className="text-sm text-gray-700">Cost Off-Peak (₹)</span>
-        </div>
-      </div>
 
       {/* Summary Table */}
       <div className="mt-2 overflow-x-auto">
         <table className="min-w-full border border-gray-300 rounded-lg text-sm text-center">
           <thead className="bg-gray-100 text-gray-700">
             <tr>
-              <th className="border px-4 py-2 align-center" rowSpan={2}>Savings (%)</th>
-              <th className="border px-4 py-2" colSpan={2}>Peak Hour Consumption (kVA)</th>
-              <th className="border px-4 py-2 align-center" rowSpan={2}>Savings (₹)</th>
-              <th className="border px-4 py-2 align-center" rowSpan={2}>Emission Reduction (kg CO₂)</th>
+              <th className="border px-4 py-2 align-center" rowSpan={2}>
+                Shift (%)
+              </th>
+              <th className="border px-4 py-2" colSpan={2}>
+                Peak Hour Consumption (kW)
+              </th>
+              <th className="border px-4 py-2" colSpan={2}>
+                Cost (₹)
+              </th>
+              <th className="border px-4 py-2 align-center" rowSpan={2}>
+                Savings (₹)
+              </th>
+              <th className="border px-4 py-2 align-center" rowSpan={2}>
+                Emission <br /> Reduction (kg CO₂)
+              </th>
             </tr>
             <tr className="bg-gray-50 text-gray-600">
+              <th className="border px-4 py-1">Before</th>
+              <th className="border px-4 py-1">After</th>
               <th className="border px-4 py-1">Before</th>
               <th className="border px-4 py-1">After</th>
             </tr>
@@ -198,7 +203,11 @@ export default function Loadshift() {
                 <td className="border px-4 py-2">{row.percent}%</td>
                 <td className="border px-4 py-2">{row.before}</td>
                 <td className="border px-4 py-2">{row.after}</td>
-                <td className="border px-4 py-2">₹{row.savings.toLocaleString()}</td>
+                <td className="border px-4 py-2">₹{row.costBefore.toLocaleString()}</td>
+                <td className="border px-4 py-2">₹{row.costAfter.toLocaleString()}</td>
+                <td className="border px-4 py-2">
+                  ₹{row.savings.toLocaleString()}
+                </td>
                 <td className="border px-4 py-2">{row.emission}</td>
               </tr>
             ))}

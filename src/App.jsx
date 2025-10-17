@@ -4,9 +4,9 @@ import Navbar from "./components/Navbar"
 import Overview from "./components/Overview"
 import ConsumerList from "./components/Consumerlist"
 import ConsumerDetail from "./components/Consumerdetail"
-import EnergyBills from "./components/EnergyBills"
+import EnergyBills from "./components/Energybills"
 import { useState, useEffect } from "react"
-import HelpModal from "./components/HelpModal"
+import HelpModal from "./components/Helpmodal"
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false)
