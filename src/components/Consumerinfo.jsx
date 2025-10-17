@@ -11,7 +11,7 @@ export default function ConsumerInfo({ consumerName, scno }) {
     },
     { title: 'Consumption (kW)', value: '420' },
     { title: 'Cost (₹)', value: '12,500' },
-    { title: 'CO₂ Emissions Reduction', value: '35 kg' },
+    { title: 'CO₂ Emissions', value: '35 kg' },
   ]
 
   return (

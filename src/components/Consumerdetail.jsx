@@ -4,6 +4,7 @@ import ConsumptionGraph from './Consumptiongraph'
 import Loadshift from './Loadshift'
 import PeakDemand from './Peakdemand'
 import ConsumerInfo from './Consumerinfo'
+import ConsumerTOD from './ConsumerTOD'
 
 export default function ConsumerDetail({ viewMode, selectedDate }) {
   const { id } = useParams()
@@ -58,9 +59,14 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
         <Loadshift scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
 
-      {/* Peak Demand Section */}
-      <div className="mt-8">
-        <PeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+      {/* Peak Demand & TOD Section */}
+      <div className="mt-8 flex gap-4">
+        <div className="flex-6">
+          <PeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+        </div>
+        <div className="flex-4">
+          <ConsumerTOD scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+        </div>
       </div>
     </div>
   )
