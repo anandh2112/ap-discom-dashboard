@@ -1,10 +1,17 @@
 export default function ConsumerInfo({ consumerName, scno }) {
-  // Sample placeholders – you can dynamically replace these later
+  // Updated cards
   const infoCards = [
-    { title: 'Consumer Name', value: consumerName },
-    { title: 'Service No.', value: scno },
-    { title: 'Connected Load', value: '150 kW' },
-    { title: 'Location', value: 'Chennai, TN' },
+    {
+      title: 'Consumer',
+      value: (
+        <div className="flex flex-col">
+          <span className="text-gray-900 text-sm font-semibold">{consumerName} ({scno})</span>
+        </div>
+      ),
+    },
+    { title: 'Consumption (kW)', value: '420' },
+    { title: 'Cost (₹)', value: '12,500' },
+    { title: 'CO₂ Emissions Reduction', value: '35 kg' },
   ]
 
   return (
@@ -15,7 +22,7 @@ export default function ConsumerInfo({ consumerName, scno }) {
           className="bg-white shadow-md rounded-xl p-2 border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-lg transition-all"
         >
           <h3 className="text-gray-500 text-xs font-medium">{card.title}</h3>
-          <p className="text-gray-900 text-md font-semibold mt-1">{card.value}</p>
+          <div className="mt-1 font-semibold">{card.value}</div>
         </div>
       ))}
     </div>

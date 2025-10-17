@@ -257,14 +257,14 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
           <thead className="bg-gray-100">
             <tr>
               <th rowSpan="2" className="border px-2 py-1">Average <br />Consumption (kW)</th>
-              <th colSpan="2" className="border px-2 py-1">Peak</th>
-              <th colSpan="2" className="border px-2 py-1">Low</th>
+              <th colSpan="2" className="border px-2 py-1">Peak <span className="text-green-600">▲</span></th>
+              <th colSpan="2" className="border px-2 py-1">Low <span className="text-red-600">▼</span></th>
             </tr>
             <tr>
               <th className="border px-2 py-1">Value (kW)</th>
-              <th className="border px-2 py-1">Percentage (%)</th>
+              <th className="border px-2 py-1">Variance (%)</th>
               <th className="border px-2 py-1">Value (kW)</th>
-              <th className="border px-2 py-1">Percentage (%)</th>
+              <th className="border px-2 py-1">Variance (%)</th>
             </tr>
           </thead>
           <tbody>
