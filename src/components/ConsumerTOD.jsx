@@ -13,7 +13,6 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
-  // Expiry time for cached data (in milliseconds)
   const CACHE_EXPIRY = 60 * 60 * 1000 // 60 minutes
 
   useEffect(() => {
@@ -53,7 +52,6 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
         const cacheKey = `${url}_cache`
         const cached = localStorage.getItem(cacheKey)
 
-        // ✅ Check for cached data
         if (cached) {
           const parsed = JSON.parse(cached)
           const isExpired = Date.now() - parsed.timestamp > CACHE_EXPIRY
@@ -61,11 +59,10 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
             console.log('Loaded TOD data from cache')
             setData(parsed.data)
             setLoading(false)
-            if (isOffline) return // Don’t refetch if offline
+            if (isOffline) return
           }
         }
 
-        // ✅ If online, try to fetch fresh data
         if (!isOffline) {
           const response = await fetch(url)
           if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`)
@@ -82,7 +79,6 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
             JSON.stringify({ data: formattedData, timestamp: Date.now() })
           )
         } else if (!cached) {
-          // No network + no cache = show fallback
           throw new Error('No cached data available and offline')
         }
       } catch (err) {
@@ -97,16 +93,8 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   }, [scno, selectedDate, viewMode, isOffline])
 
   const todOptions = {
-    chart: { type: 'pie', height: 350, backgroundColor: 'transparent' },
-    title: {
-      text:
-        viewMode === 'Week'
-          ? 'Consumer TOD (Weekly)'
-          : viewMode === 'Month'
-          ? 'Consumer TOD (Monthly)'
-          : 'Consumer TOD (Daily)',
-      style: { fontSize: '16px', fontWeight: '600' },
-    },
+    chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
+    title: { text: '' }, // ❌ Remove chart title
     tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} Wh)' },
     accessibility: { point: { valueSuffix: '%' } },
     plotOptions: {
@@ -145,6 +133,9 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
           ⚠️ Offline mode — showing cached data
         </div>
       )}
+
+      {/* 📌 Separate Header */}
+      <h3 className="text-lg font-semibold mb-8 text-center">Consumer TOD</h3>
 
       {loading ? (
         <div className="text-center text-gray-500 text-sm py-10">

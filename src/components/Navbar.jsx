@@ -62,7 +62,7 @@ export default function Navbar({ onHelp, viewMode, setViewMode, selectedDate, se
       {/* Right Section: User Menu */}
       <div className="relative flex-shrink-0">
         <button
-          className="flex items-center px-2 py-1 rounded-full hover:bg-slate-200 transition"
+          className="flex items-center px-1 py-1 rounded-full hover:bg-slate-200 transition hover:cursor-pointer ml-2"
           onClick={() => setOpen(!open)}
         >
           <User size={20} className="text-gray-700" />

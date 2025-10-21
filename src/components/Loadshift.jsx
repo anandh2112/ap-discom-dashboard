@@ -176,8 +176,8 @@ export default function Loadshift() {
     <div className="bg-white p-4 rounded-lg shadow-md">
       {/* Header row: Title (left) + Toggle (right) */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-base font-semibold text-gray-700">
-          Load Shift Simulation ({shiftPercent}% Shift)
+        <h2 className="text-lg font-semibold text-center">
+          Load Shift ({shiftPercent}% Shift)
         </h2>
 
         <div className="flex items-center space-x-2">

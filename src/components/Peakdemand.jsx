@@ -185,7 +185,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       {/* Header Row */}
       <div className="flex justify-between items-center mb-3">
         {/* Left-aligned Title */}
-        <h2 className="text-base font-semibold text-gray-800">
+        <h2 className="text-lg font-semibold text-center">
           Average Peak Demand
         </h2>
 
