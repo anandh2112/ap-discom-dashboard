@@ -3,6 +3,11 @@ import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
 import { AiOutlineInfoCircle } from 'react-icons/ai'
 
+// Disable Highcharts watermark globally
+if (Highcharts?.Chart?.prototype?.credits) {
+  Highcharts.Chart.prototype.credits = function () {}
+}
+
 export default function PeakDemand({ scno, selectedDate, viewMode }) {
   const [data, setData] = useState([])
   const [categories, setCategories] = useState([])
@@ -14,8 +19,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   const [yearEnabled, setYearEnabled] = useState(false)
 
   // Helper: cache key
-  const getCacheKey = (mode, date, sc) =>
-    `peakDemand_${mode}_${date}_${sc}`
+  const getCacheKey = (mode, date, sc) => `peakDemand_${mode}_${date}_${sc}`
 
   const saveToCache = (key, data) => {
     try {
@@ -127,8 +131,9 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   }
 
   const updateDataFromDayType = (dataset, dayType) => {
-    const hours = Object.keys(dataset[dayType] || {})
-    const values = Object.values(dataset[dayType] || {}).map((v) =>
+    const selectedKey = dataset[dayType] ? dayType : 'All'
+    const hours = Object.keys(dataset[selectedKey] || {})
+    const values = Object.values(dataset[selectedKey] || {}).map((v) =>
       parseFloat(v.toFixed(2))
     )
     setCategories(hours.map((h) => h.split(':')[0].padStart(2, '0')))
@@ -149,7 +154,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       labels: { style: { fontSize: '11px' } },
     },
     yAxis: {
-      title: { text: 'Average Peak Demand (kW)' },
+      title: { text: 'Average Peak Demand (W)' },
       labels: { style: { fontSize: '11px' } },
       gridLineColor: '#f0f0f0',
     },
@@ -170,7 +175,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       borderColor: '#ccc',
       style: { fontSize: '12px' },
       formatter: function () {
-        return `<b>${this.x}:00</b><br/>Average Peak Demand: <b>${this.y} kW</b>`
+        return `<b>${this.x}:00</b><br/>Average Peak Demand: <b>${this.y} W</b>`
       },
     },
   }
@@ -178,17 +183,17 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       {/* Header Row */}
-      <div className="flex justify-center items-center mb-3 relative">
-        {/* Centered Title */}
-        <h2 className="text-base font-semibold text-gray-800 text-center w-full">
+      <div className="flex justify-between items-center mb-3">
+        {/* Left-aligned Title */}
+        <h2 className="text-base font-semibold text-gray-800">
           Average Peak Demand
         </h2>
 
-        {/* Top-right buttons */}
-        <div className="absolute right-0 flex items-center gap-2">
+        {/* Right-aligned Buttons */}
+        <div className="flex items-center gap-2">
           {/* Day toggles only for Month or Year */}
           {(viewMode === 'Month' || yearEnabled) &&
-            ['Mon-Fri', 'Sat', 'Sun'].map((dayType) => (
+            ['Mon-Fri', 'Sat', 'Sun', 'All'].map((dayType) => (
               <button
                 key={dayType}
                 onClick={() => setActiveDayType(dayType)}
@@ -216,9 +221,13 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
 
           {/* Info icon */}
           <div className="relative group">
-            <AiOutlineInfoCircle className="ml-1 text-gray-500 cursor-pointer" size={18} />
+            <AiOutlineInfoCircle
+              className="ml-1 text-gray-500 cursor-pointer"
+              size={18}
+            />
             <div className="absolute right-0 bottom-full mb-1 w-64 bg-gray-800 text-white text-xs rounded-md p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              Viewmode "Week" doesn't apply to this component Average Peak Demand
+              Viewmode "Week" doesn't apply to this component. Average Peak
+              Demand is available for Day, Month, and Year only.
             </div>
           </div>
         </div>

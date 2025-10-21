@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
+import Variance from './Variance' // ✅ New import
 
 // Disable Highcharts watermark globally
 if (Highcharts?.Chart?.prototype?.credits) {
@@ -113,9 +114,9 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
   }, [scno, selectedDate, viewMode])
 
   const getBarColor = (hour) => {
-    if ((hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 21)) return '#F99B97' // Peak
-    if ((hour >= 10 && hour <= 14) || (hour >= 0 && hour <= 5)) return '#A5D6A7' // Off-Peak
-    return '#FFD08C' // Normal
+    if ((hour >= 6 && hour <= 9) || (hour >= 18 && hour <= 21)) return '#F77B72' // Peak
+    if ((hour >= 10 && hour <= 14) || (hour >= 0 && hour <= 5)) return '#81C784' // Off-Peak
+    return '#FFB74C' // Normal
   }
 
   const getTimeSlot = (hour) => {
@@ -140,9 +141,9 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
 
   const options = {
     chart: { type: 'column', height: 350, backgroundColor: 'transparent' },
-    title: { text: '' }, // disable chart title
+    title: { text: '' },
     xAxis: { categories: hours, title: { text: 'Hour of Day' } },
-    yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (kWh)' : 'Cost (₹)' } },
+    yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)' } },
     tooltip: {
       formatter: function () {
         const hour = this.x
@@ -150,12 +151,12 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
         const slot = getTimeSlot(parseInt(hour))
         return `<b>${hour}:00</b> (${slot})<br/><b>${
           graphType === 'consumption' ? 'Consumption' : 'Cost'
-        }:</b> ${graphType === 'consumption' ? val.toFixed(2) + ' kWh' : '₹' + val.toFixed(2)}`
+        }:</b> ${graphType === 'consumption' ? val.toFixed(2) + ' Wh' : '₹' + val.toFixed(2)}`
       },
     },
     series: [
       {
-        name: graphType === 'consumption' ? 'Consumption (kWh)' : 'Cost (₹)',
+        name: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)',
         data: (graphType === 'consumption' ? consumptionSeries : costSeries).map((val, idx) => ({
           y: val,
           color: barColors[idx],
@@ -165,13 +166,6 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
     credits: { enabled: false },
     legend: { enabled: false },
   }
-
-  const totalConsumption = consumptionSeries.reduce((a, b) => a + b, 0)
-  const peakConsumption = Math.max(...consumptionSeries)
-  const lowConsumption = Math.min(...consumptionSeries)
-  const peakPercentage = totalConsumption ? ((peakConsumption / totalConsumption) * 100).toFixed(1) : 0
-  const lowPercentage = totalConsumption ? ((lowConsumption / totalConsumption) * 100).toFixed(1) : 0
-  const avgConsumption = totalConsumption / 24
 
   if (loading) return <p className="text-gray-500 text-sm">Loading data...</p>
   if (error && !usingCache) return <p className="text-red-500 text-sm">{error}</p>
@@ -201,7 +195,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'
               }`}
             >
-              {type === 'consumption' ? 'kW' : '₹'}
+              {type === 'consumption' ? 'Wh' : '₹'}
             </button>
           ))}
         </div>
@@ -213,46 +207,25 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
       {/* Dynamic Legend */}
       <div className="flex items-center justify-center mt-3 space-x-4">
         <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#F99B97] inline-block"></span>
-          <span className="text-sm text-gray-700">{graphType === 'consumption' ? 'Peak Hours' : 'Cost Peak'}</span>
+          <span className="w-4 h-4 bg-[#F77B72] inline-block"></span>
+          <span className="text-sm text-gray-700">Peak Hours</span>
         </div>
         <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#FFD08C] inline-block"></span>
-          <span className="text-sm text-gray-700">{graphType === 'consumption' ? 'Normal Hours' : 'Cost Normal'}</span>
+          <span className="w-4 h-4 bg-[#FFB74C] inline-block"></span>
+          <span className="text-sm text-gray-700">Normal Hours</span>
         </div>
         <div className="flex items-center space-x-1">
-          <span className="w-4 h-4 bg-[#A5D6A7] inline-block"></span>
-          <span className="text-sm text-gray-700">{graphType === 'consumption' ? 'Off-Peak Hours' : 'Cost Off-Peak'}</span>
+          <span className="w-4 h-4 bg-[#81C784] inline-block"></span>
+          <span className="text-sm text-gray-700">Off-Peak Hours</span>
         </div>
       </div>
 
-      {/* Summary Table */}
-      <div className="overflow-x-auto mt-4">
-        <table className="min-w-full border border-gray-300 text-sm text-center">
-          <thead className="bg-gray-100">
-            <tr>
-              <th rowSpan="2" className="border px-2 py-1">Average <br />Consumption (kW)</th>
-              <th colSpan="2" className="border px-2 py-1">Peak </th>
-              <th colSpan="2" className="border px-2 py-1">Low </th>
-            </tr>
-            <tr>
-              <th className="border px-2 py-1">Value (kW)</th>
-              <th className="border px-2 py-1">Variance(%)</th>
-              <th className="border px-2 py-1">Value (kW)</th>
-              <th className="border px-2 py-1">Variance(%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border px-2 py-1">{avgConsumption.toFixed(2)}</td>
-              <td className="border px-2 py-1">{peakConsumption.toFixed(2)}</td>
-              <td className="border px-2 py-1">{peakPercentage} <span className="text-green-600">▲</span></td>
-              <td className="border px-2 py-1">{lowConsumption.toFixed(2)}</td>
-              <td className="border px-2 py-1">{lowPercentage} <span className="text-red-600">▼</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      {/* ✅ New Variance Component */}
+      <Variance
+        viewMode={viewMode}
+        scno={scno}
+        selectedDate={selectedDate}
+      />
     </div>
   )
 }

@@ -11,6 +11,22 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  // Expiry time for cached data (in milliseconds)
+  const CACHE_EXPIRY = 60 * 60 * 1000 // 60 minutes
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     if (!scno || !selectedDate) return
@@ -21,10 +37,12 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
 
       try {
         let url = ''
-
-        // For now, only "Day" viewMode is supported
         if (viewMode === 'Day') {
           url = `/api/fetchDailyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+        } else if (viewMode === 'Week') {
+          url = `/api/fetchWeeklyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+        } else if (viewMode === 'Month') {
+          url = `/api/fetchMonthlyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
         } else {
           console.warn(`Unsupported viewMode: ${viewMode}`)
           setData([])
@@ -32,20 +50,41 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
           return
         }
 
-        const response = await fetch(url)
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`)
+        const cacheKey = `${url}_cache`
+        const cached = localStorage.getItem(cacheKey)
+
+        // ✅ Check for cached data
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          const isExpired = Date.now() - parsed.timestamp > CACHE_EXPIRY
+          if (!isExpired) {
+            console.log('Loaded TOD data from cache')
+            setData(parsed.data)
+            setLoading(false)
+            if (isOffline) return // Don’t refetch if offline
+          }
         }
 
-        const result = await response.json()
+        // ✅ If online, try to fetch fresh data
+        if (!isOffline) {
+          const response = await fetch(url)
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`)
+          const result = await response.json()
 
-        // Transform API result into Highcharts-compatible format
-        const formattedData = Object.entries(result).map(([name, value]) => ({
-          name,
-          y: Number(value),
-        }))
+          const formattedData = Object.entries(result).map(([name, value]) => ({
+            name,
+            y: Number(value),
+          }))
 
-        setData(formattedData)
+          setData(formattedData)
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ data: formattedData, timestamp: Date.now() })
+          )
+        } else if (!cached) {
+          // No network + no cache = show fallback
+          throw new Error('No cached data available and offline')
+        }
       } catch (err) {
         console.error('Failed to fetch TOD data:', err)
         setError('Failed to load TOD data.')
@@ -55,15 +94,20 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
     }
 
     fetchTODData()
-  }, [scno, selectedDate, viewMode])
+  }, [scno, selectedDate, viewMode, isOffline])
 
   const todOptions = {
     chart: { type: 'pie', height: 350, backgroundColor: 'transparent' },
     title: {
-      text: 'Consumer TOD',
+      text:
+        viewMode === 'Week'
+          ? 'Consumer TOD (Weekly)'
+          : viewMode === 'Month'
+          ? 'Consumer TOD (Monthly)'
+          : 'Consumer TOD (Daily)',
       style: { fontSize: '16px', fontWeight: '600' },
     },
-    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} kWh)' },
+    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} Wh)' },
     accessibility: { point: { valueSuffix: '%' } },
     plotOptions: {
       pie: {
@@ -71,7 +115,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
         cursor: 'pointer',
         dataLabels: { enabled: false },
         showInLegend: true,
-        center: ['40%', '50%'], // shift pie slightly left to make room for legend
+        center: ['40%', '50%'],
       },
     },
     legend: {
@@ -80,10 +124,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
       layout: 'vertical',
       itemMarginTop: 10,
       itemMarginBottom: 10,
-      itemStyle: {
-        fontSize: '12px',
-        fontWeight: '400',
-      },
+      itemStyle: { fontSize: '12px', fontWeight: '400' },
     },
     series: [
       {
@@ -97,7 +138,14 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   }
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md h-full">
+    <div className="bg-white p-4 rounded-lg shadow-md h-full relative">
+      {/* ⚠️ Offline Banner */}
+      {isOffline && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-md shadow-sm">
+          ⚠️ Offline mode — showing cached data
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center text-gray-500 text-sm py-10">
           Loading TOD data...
