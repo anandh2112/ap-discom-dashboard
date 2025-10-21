@@ -172,18 +172,11 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
   if (consumptionData.length === 0 && costData.length === 0)
     return <p className="text-gray-500 text-sm">No data available for this date.</p>
 
-  const headerText =
-    viewMode === 'Week'
-      ? `Weekly Hourly ${graphType === 'consumption' ? 'Consumption' : 'Cost'}`
-      : viewMode === 'Month'
-      ? `Monthly Hourly ${graphType === 'consumption' ? 'Consumption' : 'Cost'}`
-      : `Daily Hourly ${graphType === 'consumption' ? 'Consumption' : 'Cost'}`
-
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       {/* Header with Toggle */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">{headerText}</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Hourly Consumption</h2>
         <div className="flex items-center gap-1 sm:gap-2">
           {['consumption', 'cost'].map((type) => (
             <button
