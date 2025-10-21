@@ -47,7 +47,7 @@ export default function ConsumerList() {
         }
 
         // Otherwise, fetch from network
-        const res = await fetch("/api/fetchAllParUniqueMSN", { cache: "no-store" })
+        const res = await fetch("https://ee.elementsenergies.com/api/fetchAllParUniqueMSN", { cache: "no-store" })
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`)
         const data = await res.json()
 
