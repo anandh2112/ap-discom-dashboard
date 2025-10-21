@@ -83,7 +83,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       if (yearEnabled) {
         const year = new Date(selectedDate).getFullYear()
         const response = await fetch(
-          `/api/fetchYearlyHourlyAvgPeakDemand?scno=${scno}&year=${year}`
+          `https://ee.elementsenergies.com/api/fetchYearlyHourlyAvgPeakDemand?scno=${scno}&year=${year}`
         )
         const res = await response.json()
         setYearlyData(res)
@@ -92,7 +92,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       } else if (viewMode === 'Month') {
         const monthString = selectedDate.slice(0, 7)
         const response = await fetch(
-          `/api/fetchMonthlyHourlyAvgPeakDemand?scno=${scno}&month=${monthString}`
+          `https://ee.elementsenergies.com/api/fetchMonthlyHourlyAvgPeakDemand?scno=${scno}&month=${monthString}`
         )
         const res = await response.json()
         setMonthlyData(res)
@@ -100,7 +100,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
         updateDataFromDayType(res, activeDayType)
       } else {
         const response = await fetch(
-          `/api/fetchDailyHourlyAvgPeakDemand?scno=${scno}&date=${selectedDate}`
+          `https://ee.elementsenergies.com/api/fetchDailyHourlyAvgPeakDemand?scno=${scno}&date=${selectedDate}`
         )
         const res = await response.json()
         saveToCache(cacheKey, res)

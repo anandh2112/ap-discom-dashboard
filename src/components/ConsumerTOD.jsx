@@ -37,11 +37,11 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
       try {
         let url = ''
         if (viewMode === 'Day') {
-          url = `/api/fetchDailyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchDailyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
         } else if (viewMode === 'Week') {
-          url = `/api/fetchWeeklyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchWeeklyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
         } else if (viewMode === 'Month') {
-          url = `/api/fetchMonthlyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchMonthlyTariffBasedConsumption?scno=${scno}&date=${selectedDate}`
         } else {
           console.warn(`Unsupported viewMode: ${viewMode}`)
           setData([])
