@@ -4,7 +4,7 @@ import { useState } from "react"
 
 export default function Sidebar() {
   const location = useLocation()
-  const [openInsights, setOpenInsights] = useState(true) // keeps submenu open by default
+  const [openInsights, setOpenInsights] = useState(false)
 
   const links = [
     { to: "/", label: "Overview", icon: <Home size={15} /> },
