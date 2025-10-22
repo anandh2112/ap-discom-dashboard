@@ -1,20 +1,27 @@
 import { Link, useLocation } from "react-router-dom"
-import { Home, Users, FileText } from "lucide-react"
+import { Home, Users, BarChart3, ChevronDown } from "lucide-react"
+import { useState } from "react"
 
 export default function Sidebar() {
   const location = useLocation()
+  const [openInsights, setOpenInsights] = useState(true) // keeps submenu open by default
+
   const links = [
     { to: "/", label: "Overview", icon: <Home size={15} /> },
     { to: "/consumers", label: "Consumer List", icon: <Users size={15} /> },
-    { to: "/bills", label: "Energy Bills", icon: <FileText size={15} /> },
+  ]
+
+  const insightsSubmenu = [
+    { to: "/insights/variance", label: "Variance" },
+    { to: "/insights/tod", label: "TOD" },
   ]
 
   return (
     <div className="w-[11vw] bg-slate-900 text-white flex flex-col">
-      <div className="text-center py-4 text-md font-bold ">
-        Elements
-      </div>
+      <div className="text-center py-4 text-md font-bold">Elements</div>
+
       <nav className="flex-1 mt-4 text-sm">
+        {/* Main links */}
         {links.map(({ to, label, icon }) => (
           <Link
             key={to}
@@ -27,6 +34,43 @@ export default function Sidebar() {
             <span className="ml-2">{label}</span>
           </Link>
         ))}
+
+        {/* Insights Section */}
+        <div>
+          <button
+            onClick={() => setOpenInsights(!openInsights)}
+            className={`flex items-center justify-between w-full px-5 py-3 hover:bg-slate-700 ${
+              location.pathname.startsWith("/insights") ? "bg-slate-700" : ""
+            }`}
+          >
+            <div className="flex items-center">
+              <BarChart3 size={15} />
+              <span className="ml-2">Insights</span>
+            </div>
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${
+                openInsights ? "rotate-180" : "rotate-0"
+              }`}
+            />
+          </button>
+
+          {openInsights && (
+            <div className="ml-4">
+              {insightsSubmenu.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`block px-4 py-2 hover:bg-slate-700 ${
+                    location.pathname === to ? "bg-slate-700" : ""
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
     </div>
   )

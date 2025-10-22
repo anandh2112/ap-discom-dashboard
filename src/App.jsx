@@ -4,39 +4,33 @@ import Navbar from "./components/Navbar"
 import Overview from "./components/Overview"
 import ConsumerList from "./components/Consumerlist"
 import ConsumerDetail from "./components/Consumerdetail"
-import EnergyBills from "./components/Energybills"
+import VarianceInsights from "./components/Varianceinsights"
+import TODInsights from "./components/TODinsights"
 import { useState, useEffect } from "react"
 import HelpModal from "./components/Helpmodal"
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false)
+  const [viewMode, setViewMode] = useState("Day")
 
-  // ---- ConsumerDetail Controls ----
-  const [viewMode, setViewMode] = useState('Day')
-
-  // Load last selected date from localStorage or default to MAX_DATE
-  const MAX_DATE = '2025-10-08'
-  const MIN_DATE = '2025-02-22'
+  const MAX_DATE = "2025-10-08"
+  const MIN_DATE = "2025-02-22"
   const [selectedDate, setSelectedDate] = useState(() => {
-    const saved = localStorage.getItem('consumer_detail_date')
+    const saved = localStorage.getItem("consumer_detail_date")
     return saved ? saved : MAX_DATE
   })
 
-  // Persist selectedDate in localStorage whenever it changes
   useEffect(() => {
     if (selectedDate >= MIN_DATE && selectedDate <= MAX_DATE) {
-      localStorage.setItem('consumer_detail_date', selectedDate)
+      localStorage.setItem("consumer_detail_date", selectedDate)
     }
   }, [selectedDate])
 
   return (
     <div className="flex h-screen bg-slate-100">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Navbar */}
         <Navbar
           onHelp={() => setShowHelp(true)}
           viewMode={viewMode}
@@ -45,7 +39,6 @@ export default function App() {
           setSelectedDate={setSelectedDate}
         />
 
-        {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-2">
           <Routes>
             <Route path="/" element={<Overview />} />
@@ -59,12 +52,12 @@ export default function App() {
                 />
               }
             />
-            <Route path="/bills" element={<EnergyBills />} />
+            <Route path="/insights/variance" element={<VarianceInsights />} />
+            <Route path="/insights/tod" element={<TODInsights />} />
           </Routes>
         </div>
       </div>
 
-      {/* Help Modal */}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </div>
   )

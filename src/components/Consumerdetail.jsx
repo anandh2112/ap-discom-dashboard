@@ -47,7 +47,7 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       )}
 
       {/* Consumer Info Cards */}
-      <ConsumerInfo consumerName={consumerName} scno={scno} />
+      <ConsumerInfo consumerName={consumerName} scno={scno} selectedDate={selectedDate} viewMode={viewMode}  />
 
       {/* Consumption Graph */}
       <div className="mt-4">
