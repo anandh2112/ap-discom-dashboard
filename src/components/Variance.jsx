@@ -102,7 +102,7 @@ export default function Variance({ viewMode, scno, selectedDate }) {
         <thead className="bg-gray-100">
           <tr>
             <th rowSpan="2" className="border px-2 py-1">
-              Average <br />Consumption (kW)
+              Average <br />Consumption (Wh)
             </th>
             <th colSpan="2" className="border px-2 py-1">
               Peak ({peakHour})
@@ -112,9 +112,9 @@ export default function Variance({ viewMode, scno, selectedDate }) {
             </th>
           </tr>
           <tr>
-            <th className="border px-2 py-1">Value (kW)</th>
+            <th className="border px-2 py-1">Value (Wh)</th>
             <th className="border px-2 py-1">Variance (%)</th>
-            <th className="border px-2 py-1">Value (kW)</th>
+            <th className="border px-2 py-1">Value (Wh)</th>
             <th className="border px-2 py-1">Variance (%)</th>
           </tr>
         </thead>

@@ -224,7 +224,7 @@ export default function Loadshift() {
                 Emission <br /> Reduction (kg CO₂)
               </th>
             </tr>
-            <tr className="bg-gray-50 text-gray-600">
+            <tr className="bg-gray-100 text-gray-600">
               <th className="border px-4 py-1">Before</th>
               <th className="border px-4 py-1">After</th>
               <th className="border px-4 py-1">Before</th>
