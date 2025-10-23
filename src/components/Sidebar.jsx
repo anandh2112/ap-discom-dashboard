@@ -1,5 +1,12 @@
 import { Link, useLocation } from "react-router-dom"
-import { Home, Users, BarChart3, ChevronDown } from "lucide-react"
+import {
+  Home,
+  Users,
+  BarChart3,
+  ChevronDown,
+  LineChart,
+  PieChart,
+} from "lucide-react"
 import { useState } from "react"
 
 export default function Sidebar() {
@@ -12,8 +19,8 @@ export default function Sidebar() {
   ]
 
   const insightsSubmenu = [
-    { to: "/insights/variance", label: "Variance" },
-    { to: "/insights/tod", label: "TOD" },
+    { to: "/insights/variance", label: "Variance", icon: <LineChart size={14} /> },
+    { to: "/insights/tod", label: "TOD", icon: <PieChart size={14} /> },
   ]
 
   return (
@@ -57,15 +64,16 @@ export default function Sidebar() {
 
           {openInsights && (
             <div className="ml-4">
-              {insightsSubmenu.map(({ to, label }) => (
+              {insightsSubmenu.map(({ to, label, icon }) => (
                 <Link
                   key={to}
                   to={to}
-                  className={`block px-4 py-2 hover:bg-slate-700 ${
+                  className={`flex items-center px-4 py-2 hover:bg-slate-700 ${
                     location.pathname === to ? "bg-slate-700" : ""
                   }`}
                 >
-                  {label}
+                  {icon}
+                  <span className="ml-2">{label}</span>
                 </Link>
               ))}
             </div>

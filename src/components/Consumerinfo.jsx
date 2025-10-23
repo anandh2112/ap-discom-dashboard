@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react'
 
 export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMode }) {
-  const [dayData, setDayData] = useState({ Consumption: null, Cost: null })
+  const [data, setData] = useState({ Consumption: null, Cost: null })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Fetch day-wise data only if viewMode is "Day"
-    if (viewMode === 'Day' && selectedDate) {
+    // Fetch data only if Day or Week view is selected
+    if ((viewMode === 'Day' || viewMode === 'Week') && selectedDate) {
       const fetchData = async () => {
         setLoading(true)
         setError(null)
+
+        // Choose API endpoint based on view mode
+        const endpoint =
+          viewMode === 'Day'
+            ? 'https://ee.elementsenergies.com/api/fetchDaywiseTotalConsCost'
+            : 'https://ee.elementsenergies.com/api/fetchWeekwiseTotalConsCost'
+
         try {
-          const response = await fetch(
-            `https://ee.elementsenergies.com/api/fetchDaywiseTotalConsCost?scno=${scno}&date=${selectedDate}`
-          )
+          const response = await fetch(`${endpoint}?scno=${scno}&date=${selectedDate}`)
           if (!response.ok) throw new Error('Failed to fetch data')
-          const data = await response.json()
-          setDayData({ Consumption: data.Consumption, Cost: data.Cost })
+          const result = await response.json()
+          setData({ Consumption: result.Consumption, Cost: result.Cost })
         } catch (err) {
           console.error(err)
           setError('Error fetching data')
@@ -30,7 +35,6 @@ export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMod
     }
   }, [scno, selectedDate, viewMode])
 
-  // Prepare cards
   const infoCards = [
     {
       title: 'Consumer',
@@ -45,23 +49,23 @@ export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMod
     {
       title: 'Consumption (Wh)',
       value:
-        viewMode === 'Day'
+        viewMode === 'Day' || viewMode === 'Week'
           ? loading
             ? 'Loading...'
             : error
             ? error
-            : dayData.Consumption?.toLocaleString() || '-'
+            : data.Consumption?.toLocaleString() || '-'
           : '420',
     },
     {
       title: 'Cost (₹)',
       value:
-        viewMode === 'Day'
+        viewMode === 'Day' || viewMode === 'Week'
           ? loading
             ? 'Loading...'
             : error
             ? error
-            : dayData.Cost?.toLocaleString() || '-'
+            : data.Cost?.toLocaleString() || '-'
           : '12,500',
     },
     { title: 'CO₂ Emissions', value: '35 kg' },
