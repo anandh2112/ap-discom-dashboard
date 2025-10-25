@@ -46,7 +46,7 @@ export default function Sidebar() {
         <div>
           <button
             onClick={() => setOpenInsights(!openInsights)}
-            className={`flex items-center justify-between w-full px-5 py-3 hover:bg-slate-700 ${
+            className={`flex items-center justify-between w-full px-5 py-3 hover:bg-slate-700 hover:cursor-pointer ${
               location.pathname.startsWith("/insights") ? "bg-slate-700" : ""
             }`}
           >
