@@ -127,7 +127,7 @@ export default function TODTable() {
       )}
 
       {/* Data Table */}
-      <div className="overflow-x-auto bg-white p-4 rounded-b-lg shadow-md">
+      <div className="overflow-x-auto bg-white p-4 rounded-lg shadow-md">
         <table className="w-full border border-gray-300 text-sm text-center">
           <thead>
             <tr className="bg-gray-100">
