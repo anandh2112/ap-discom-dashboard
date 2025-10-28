@@ -124,8 +124,8 @@ export default function VarianceTable() {
                 <th rowSpan={2} className="border px-3 py-2 align-middle">
                   Average <br />(kWh)
                 </th>
-                <th colSpan={4} className="border px-3 py-2">Average Peak</th>
-                <th colSpan={4} className="border px-3 py-2">Average Low</th>
+                <th colSpan={4} className="border px-3 py-2">Average Peak <span className="text-green-600">▲</span></th>
+                <th colSpan={4} className="border px-3 py-2">Average Low <span className="text-red-600">▼</span></th>
               </tr>
               <tr className="bg-gray-100">
                 {["Peak", "Low"].map((type) => (
@@ -133,11 +133,7 @@ export default function VarianceTable() {
                     <th className="border px-3 py-2">Hour</th>
                     <th className="border px-3 py-2">Value <br />(kWh)</th>
                     <th className="border px-3 py-2">
-                      % {type === "Peak" ? (
-                        <span className="text-green-600">▲</span>
-                      ) : (
-                        <span className="text-red-600">▼</span>
-                      )}
+                      % 
                     </th>
                     <th className="border px-3 py-2">Category</th>
                   </React.Fragment>
