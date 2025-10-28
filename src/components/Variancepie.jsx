@@ -151,13 +151,13 @@ export default function VariancePie() {
         <div className="w-full md:w-1/2 bg-white p-4 rounded-lg shadow-md">
           <HighchartsReact
             highcharts={Highcharts}
-            options={createOptions("Peak Variance", peakData)}
+            options={createOptions("Upward Variance", peakData)}
           />
         </div>
         <div className="w-full md:w-1/2 bg-white p-4 rounded-lg shadow-md">
           <HighchartsReact
             highcharts={Highcharts}
-            options={createOptions("Low Variance", lowData)}
+            options={createOptions("Downward Variance", lowData)}
           />
         </div>
       </div>
