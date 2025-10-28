@@ -6,7 +6,7 @@ export default function VarianceInsights() {
   const [viewMode, setViewMode] = useState("table")
 
   return (
-    <div className="p-4 font-poppins">
+    <div className="p-2 font-poppins">
       {/* Header Section */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Variance</h1>

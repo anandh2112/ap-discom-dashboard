@@ -133,10 +133,10 @@ export default function TODTable() {
             <tr className="bg-gray-100">
               <th rowSpan={2} className="border px-3 py-2">S.No</th>
               <th rowSpan={2} className="border px-3 py-2">Consumer</th>
-              <th colSpan={2} className="border px-3 py-2">Peak-1</th>
-              <th colSpan={2} className="border px-3 py-2">Peak-2</th>
-              <th colSpan={2} className="border px-3 py-2">Normal</th>
-              <th colSpan={2} className="border px-3 py-2">Off-Peak</th>
+              <th colSpan={2} className="border px-3 py-2">Peak-1 <br /><span className="text-xs text-gray-600">(6 am - 10 am)</span></th>
+              <th colSpan={2} className="border px-3 py-2">Peak-2 <br /><span className="text-xs text-gray-600">(6 pm - 10 pm)</span></th>
+              <th colSpan={2} className="border px-3 py-2">Normal <br /><span className="text-xs text-gray-600">(3 pm - 6 pm) &<br />(10 pm - 12 pm)</span></th>
+              <th colSpan={2} className="border px-3 py-2">Off-Peak <br /><span className="text-xs text-gray-600">(12 am - 6 am) &<br />(10 am - 3 pm)</span></th>
               <th rowSpan={2} className="border px-3 py-2">Max Savings (₹)</th>
             </tr>
             <tr className="bg-gray-100">
