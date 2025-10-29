@@ -144,12 +144,21 @@ export default function VarianceTable() {
   }, [])
 
   // Update sortMetric defaults when view changes
+  // FIX: Don't blindly overwrite the user's selected sortMetric when switching between "Average Peak" and "Average Low".
+  // Only force the metric to "average" when switching to "Average". When switching between Peak/Low, preserve
+  // an existing Peak/Low metric (hour/value/percent/category) so sorting by hour continues to work as expected.
   useEffect(() => {
     if (view === "Average") {
       setSortMetric("average")
     } else {
-      // default for Peak/Low
-      setSortMetric("value")
+      // only set to "value" if current metric is "average" or invalid for Peak/Low
+      setSortMetric((prev) => {
+        const peakLowAllowed = ["hour", "value", "percent", "category"]
+        if (prev === "average" || !peakLowAllowed.includes(prev)) {
+          return "value"
+        }
+        return prev
+      })
     }
   }, [view])
 
@@ -169,7 +178,20 @@ export default function VarianceTable() {
   // Numeric guard
   function toNumberSafe(v) {
     if (v === null || v === undefined || v === "") return null
-    const n = Number(v)
+    // If it's already a number, return it directly (avoids parsing issues).
+    if (typeof v === "number") {
+      return Number.isFinite(v) ? v : null
+    }
+    // Strings like "01:00" can't be parsed by Number(); ensure we handle only simple numeric strings
+    const cleaned = String(v).trim()
+    // If contains ":" try to take the first segment like normalizeHour
+    if (cleaned.includes(":")) {
+      const parts = cleaned.split(":")
+      const raw = parts[0]
+      const asNum = Number(raw)
+      return Number.isFinite(asNum) ? Math.floor(asNum) : null
+    }
+    const n = Number(cleaned)
     return Number.isFinite(n) ? n : null
   }
 
