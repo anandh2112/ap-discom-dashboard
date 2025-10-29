@@ -163,7 +163,7 @@ export default function VariancePie() {
       </div>
 
       {/* Summary Table Below Charts */}
-      {/* <div className="bg-white p-4 rounded-lg shadow-md">
+      <div className="bg-white p-4 rounded-lg shadow-md">
         <h3 className="text-center font-semibold text-gray-700 mb-3 text-sm">
           Variance Summary
         </h3>
@@ -191,7 +191,7 @@ export default function VariancePie() {
             </tr>
           </tbody>
         </table>
-      </div> */}
+      </div>
     </div>
   );
 }

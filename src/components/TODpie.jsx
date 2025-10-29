@@ -8,18 +8,17 @@ const CACHE_EXPIRY_HOURS = 12
 export default function TODPie() {
   const [data, setData] = useState([])
   const [tableData, setTableData] = useState([])
+  const [totalConsumers, setTotalConsumers] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
   useEffect(() => {
-    // ✅ Monitor online/offline status
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
 
-    // ✅ Cleanup listeners
     return () => {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
@@ -29,7 +28,6 @@ export default function TODPie() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Check for cached data
         const cached = localStorage.getItem(CACHE_KEY)
         if (cached) {
           const parsed = JSON.parse(cached)
@@ -38,14 +36,13 @@ export default function TODPie() {
             console.log("Loaded TOD data from cache")
             setData(parsed.data)
             setTableData(parsed.tableData)
+            setTotalConsumers(parsed.totalConsumers)
             setLoading(false)
-            // Fetch fresh data in background if online
             if (navigator.onLine) refreshData()
             return
           }
         }
 
-        // No cache or expired → fetch fresh
         if (navigator.onLine) {
           await refreshData()
         } else {
@@ -58,11 +55,9 @@ export default function TODPie() {
       }
     }
 
-    // Fetch or load from cache
     fetchData()
   }, [])
 
-  // 🔁 Helper: fetch & cache latest data
   async function refreshData() {
     try {
       const res = await fetch("https://ee.elementsenergies.com/api/fetchAllConsumersTariffHighCount")
@@ -70,39 +65,33 @@ export default function TODPie() {
 
       const counts = json.HighConsumptionTariffCounts
       const percentages = json.HighConsumptionTariffPercentages
+      const total = json.TotalConsumers || 0
 
-      // Prepare chart data
+      // ✅ Prepare pie data (from counts)
       const chartData = [
-        { name: "Peak 1", y: parseFloat(percentages["Peak-1"]), count: counts["Peak-1"] },
-        { name: "Peak 2", y: parseFloat(percentages["Peak-2"]), count: counts["Peak-2"] },
-        { name: "Normal", y: parseFloat(percentages["Normal"]), count: counts["Normal"] },
-        { name: "Off-peak", y: parseFloat(percentages["Off-Peak"]), count: counts["Off-Peak"] },
+        { name: "Peak", y: counts["Peak"] },
+        { name: "Normal", y: counts["Normal"] },
+        { name: "Off-Peak", y: counts["Off-Peak"] },
       ]
 
-      // Prepare table data
-      const tableFormatted = Object.keys(counts).map((key) => ({
-        name:
-          key === "Peak-1"
-            ? "Peak 1"
-            : key === "Peak-2"
-            ? "Peak 2"
-            : key === "Off-Peak"
-            ? "Off-peak"
-            : key,
-        percentage: percentages[key],
-        count: counts[key],
-      }))
+      // ✅ Prepare table data
+      const tableFormatted = [
+        { name: "Peak", count: counts["Peak"], percentage: percentages["Peak"] },
+        { name: "Normal", count: counts["Normal"], percentage: percentages["Normal"] },
+        { name: "Off-Peak", count: counts["Off-Peak"], percentage: percentages["Off-Peak"] },
+      ]
 
       setData(chartData)
       setTableData(tableFormatted)
+      setTotalConsumers(total)
       setLoading(false)
 
-      // ✅ Cache data with timestamp
       localStorage.setItem(
         CACHE_KEY,
         JSON.stringify({
           data: chartData,
           tableData: tableFormatted,
+          totalConsumers: total,
           timestamp: Date.now(),
         })
       )
@@ -117,7 +106,7 @@ export default function TODPie() {
     chart: { type: "pie", height: 300, backgroundColor: "transparent" },
     title: { text: "" },
     tooltip: {
-      pointFormat: "<b>{point.percentage:.1f}%</b> ({point.count})",
+      pointFormat: "<b>{point.y}</b> consumers",
     },
     accessibility: { point: { valueSuffix: "%" } },
     plotOptions: {
@@ -142,7 +131,7 @@ export default function TODPie() {
         name: "TOD Split",
         colorByPoint: true,
         data: data,
-        colors: ["#FF8042", "#FF0000", "#00C49F", "#0088FE"],
+        colors: ["#FF8042", "#00C49F", "#0088FE"],
       },
     ],
     credits: { enabled: false },
@@ -166,7 +155,6 @@ export default function TODPie() {
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md h-full flex flex-col md:flex-row gap-4 relative">
-      {/* ✅ Offline Banner */}
       {isOffline && (
         <div className="absolute top-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-sm py-2 text-center font-medium rounded-t-lg">
           You are offline — showing cached data
@@ -180,26 +168,30 @@ export default function TODPie() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 mt-6 md:mt-0">
-        <h3 className="text-lg font-semibold mb-4 text-center">Details</h3>
-        <table className="w-full text-left border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border px-3 py-2">TOD</th>
-              <th className="border px-3 py-2">Percentage</th>
-              <th className="border px-3 py-2">Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableData.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="border px-3 py-2">{item.name}</td>
-                <td className="border px-3 py-2">{item.percentage}</td>
-                <td className="border px-3 py-2">{item.count}</td>
+      <div className="flex-1 mt-6 md:mt-0 gap-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-center">Details</h3>
+        </div>
+        <div>
+          <table className="w-full text-left border-collapse border border-gray-200">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border px-3 py-2">TOD</th>
+                <th className="border px-3 py-2">Count</th>
+                <th className="border px-3 py-2">Percentage</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tableData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="border px-3 py-2 font-medium">{item.name}</td>
+                  <td className="border px-3 py-2">{item.count ?? item.value ?? "-"}</td>
+                  <td className="border px-3 py-2">{item.percentage ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
