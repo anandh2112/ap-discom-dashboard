@@ -5,15 +5,14 @@ import HighchartsReact from "highcharts-react-official";
 export default function VariancePie() {
   const [peakData, setPeakData] = useState([]);
   const [lowData, setLowData] = useState([]);
+  const [tableData, setTableData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Cache key and expiry duration
   const CACHE_KEY = "varianceChartData";
   const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
-  // Function to map fetched data into Highcharts format with custom labels
   const mapDataWithLabels = (dataObj, labels) => {
     const keys = Object.keys(dataObj);
     return keys.map((key, index) => ({
@@ -22,7 +21,6 @@ export default function VariancePie() {
     }));
   };
 
-  // Listen for online/offline events
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -38,25 +36,24 @@ export default function VariancePie() {
   useEffect(() => {
     const fetchVarianceData = async () => {
       try {
-        // Check cache
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
           const { timestamp, data } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
-            // Cache still valid
             setPeakData(data.peakData);
             setLowData(data.lowData);
+            setTableData(data.tableData);
             setLoading(false);
             return;
           }
         }
 
-        // If offline and no valid cache, show error
         if (!navigator.onLine) {
           if (cached) {
             const { data } = JSON.parse(cached);
             setPeakData(data.peakData);
             setLowData(data.lowData);
+            setTableData(data.tableData);
             setLoading(false);
             return;
           } else {
@@ -64,14 +61,14 @@ export default function VariancePie() {
           }
         }
 
-        // Fetch from API
-        const response = await fetch(
+        // Fetch chart data
+        const chartRes = await fetch(
           "https://ee.elementsenergies.com/api/fetchAllHighLowAvgChart"
         );
-        const jsonData = await response.json();
+        const chartJson = await chartRes.json();
 
-        const increaseData = jsonData.percent_increase_from_avg || {};
-        const decreaseData = jsonData.percent_decrease_from_avg || {};
+        const increaseData = chartJson.percent_increase_from_avg || {};
+        const decreaseData = chartJson.percent_decrease_from_avg || {};
 
         const labels = ["Very Low", "Low", "Medium", "High", "Very High"];
 
@@ -81,18 +78,24 @@ export default function VariancePie() {
         setPeakData(peak);
         setLowData(low);
 
-        // Store in cache
+        // Fetch table data
+        const tableRes = await fetch(
+          "https://ee.elementsenergies.com/api/fetchAllHighLowAvgChartTable"
+        );
+        const tableJson = await tableRes.json();
+        setTableData(tableJson);
+
+        // Cache both
         localStorage.setItem(
           CACHE_KEY,
           JSON.stringify({
             timestamp: Date.now(),
-            data: { peakData: peak, lowData: low },
+            data: { peakData: peak, lowData: low, tableData: tableJson },
           })
         );
 
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching variance data:", err);
         setError("Failed to load chart data");
         setLoading(false);
       }
@@ -137,16 +140,17 @@ export default function VariancePie() {
     return <div className="text-center text-red-500 py-6">{error}</div>;
   }
 
+  const increase = tableData?.percentIncreaseStats || {};
+  const decrease = tableData?.percentDecreaseStats || {};
+
   return (
     <div className="w-full flex flex-col gap-4 relative">
-      {/* Offline Banner */}
       {isOffline && (
         <div className="bg-yellow-200 text-yellow-800 text-center py-2 text-sm font-medium rounded-md shadow-sm">
           ⚠️ You are offline — showing cached data (if available)
         </div>
       )}
 
-      {/* Row of Pie Charts */}
       <div className="flex flex-col md:flex-row gap-4 mt-2">
         <div className="w-full md:w-1/2 bg-white p-4 rounded-lg shadow-md">
           <HighchartsReact
@@ -162,7 +166,6 @@ export default function VariancePie() {
         </div>
       </div>
 
-      {/* Summary Table Below Charts */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <h3 className="text-center font-semibold text-gray-700 mb-3 text-sm">
           Variance Summary
@@ -173,21 +176,37 @@ export default function VariancePie() {
               <th className="border px-2 py-1">Average Consumption</th>
               <th className="border px-2 py-1">Highest Variance</th>
               <th className="border px-2 py-1">Lowest Variance</th>
-              <th className="border px-2 py-1">Median</th>
+              <th className="border px-2 py-1">Average</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="border px-2 py-1 font-medium">Average Peak</td>
-              <td className="border px-2 py-1">70%</td>
-              <td className="border px-2 py-1">30%</td>
-              <td className="border px-2 py-1">55%</td>
+              <td className="border px-2 py-1 font-medium">
+                Average Upward Variance
+              </td>
+              <td className="border px-2 py-1">
+                {increase.highest?.toFixed(2) ?? "-"}%
+              </td>
+              <td className="border px-2 py-1">
+                {increase.lowest?.toFixed(2) ?? "-"}%
+              </td>
+              <td className="border px-2 py-1">
+                {increase.average?.toFixed(2) ?? "-"}%
+              </td>
             </tr>
             <tr>
-              <td className="border px-2 py-1 font-medium">Average Low</td>
-              <td className="border px-2 py-1">65%</td>
-              <td className="border px-2 py-1">35%</td>
-              <td className="border px-2 py-1">50%</td>
+              <td className="border px-2 py-1 font-medium">
+                Average Downward Variance
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.highest?.toFixed(2) ?? "-"}%
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.lowest?.toFixed(2) ?? "-"}%
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.average?.toFixed(2) ?? "-"}%
+              </td>
             </tr>
           </tbody>
         </table>
