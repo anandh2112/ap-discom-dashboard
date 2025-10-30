@@ -33,15 +33,4 @@ export default defineConfig({
       }
     })
   ],
-
-  // ✅ Proxy configuration for local development
-  server: {
-    proxy: {
-      '/api': {
-        target: 'https://ee.elementsenergies.com',
-        changeOrigin: true,
-        secure: true,
-      },
-    },
-  },
 })
