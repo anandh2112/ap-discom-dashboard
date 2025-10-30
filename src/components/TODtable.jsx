@@ -195,7 +195,7 @@ export default function TODTable() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-2 py-1 border rounded text-sm"
+            className="px-1 py-1 border rounded text-xs"
           >
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -212,16 +212,16 @@ export default function TODTable() {
             placeholder="min"
             value={percentMin}
             onChange={(e) => setPercentMin(e.target.value)}
-            className="w-16 px-2 py-1 border rounded text-sm"
+            className="w-[3vw] px-1 py-1 border rounded text-xs"
           />
-          <span className="text-xs">—</span>
+          <span className="text-xs">-</span>
           <input
             type="number"
             step="any"
             placeholder="max"
             value={percentMax}
             onChange={(e) => setPercentMax(e.target.value)}
-            className="w-16 px-2 py-1 border rounded text-sm"
+            className="w-[3vw] px-1 py-1 border rounded text-xs"
           />
         </div>
 
@@ -234,50 +234,50 @@ export default function TODTable() {
             placeholder="min"
             value={valueMin}
             onChange={(e) => setValueMin(e.target.value)}
-            className="w-20 px-2 py-1 border rounded text-sm"
+            className="w-[4vw] px-1 py-1 border rounded text-xs"
           />
-          <span className="text-xs">—</span>
+          <span className="text-xs">-</span>
           <input
             type="number"
             step="any"
             placeholder="max"
             value={valueMax}
             onChange={(e) => setValueMax(e.target.value)}
-            className="w-20 px-2 py-1 border rounded text-sm"
+            className="w-[4vw] px-1 py-1 border rounded text-xs"
           />
         </div>
 
-        <div className="flex gap-2">
-        {/* Sort metric */}
-        <div className="flex items-center gap-2 ml-1">
-          <span className="text-xs text-gray-600">Sort by</span>
-          <select
-            value={sortMetric}
-            onChange={(e) => setSortMetric(e.target.value)}
-            className="px-2 py-1 border rounded text-sm"
-          >
-            <option value="percent">Percent</option>
-            <option value="value">Value</option>
-          </select>
-        </div>
+        <div className="flex gap-4">
+          {/* Sort metric */}
+          <div className="flex items-center gap-2 ml-1">
+            <span className="text-xs text-gray-600">Sort by</span>
+            <select
+              value={sortMetric}
+              onChange={(e) => setSortMetric(e.target.value)}
+              className="px-1 py-1 border rounded text-xs"
+            >
+              <option value="percent">Percent</option>
+              <option value="value">Value</option>
+            </select>
+          </div>
 
-        {/* Sort order buttons */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
-            title="Ascending"
-            className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-          >
-            ▲
-          </button>
-          <button
-            onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
-            title="Descending"
-            className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-          >
-            ▼
-          </button>
-        </div>
+          {/* Sort order buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
+              title="Ascending"
+              className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+            >
+              ▲
+            </button>
+            <button
+              onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
+              title="Descending"
+              className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+            >
+              ▼
+            </button>
+          </div>
         </div>    
         {/* Refresh / clear button */}
         <div>

@@ -1,9 +1,17 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import VarianceTable from "./Variancetable"
 import VariancePie from "./Variancepie"
 
 export default function VarianceInsights() {
-  const [viewMode, setViewMode] = useState("table")
+  const [viewMode, setViewMode] = useState(() => {
+    // Load from localStorage, or default to "table"
+    return localStorage.getItem("varianceViewMode") || "table"
+  })
+
+  // Store the viewMode whenever it changes
+  useEffect(() => {
+    localStorage.setItem("varianceViewMode", viewMode)
+  }, [viewMode])
 
   return (
     <div className="p-2 font-poppins">

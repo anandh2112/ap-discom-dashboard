@@ -127,17 +127,22 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
 
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
 
+  // Normalize series values to numbers (handles string values like "10.00")
   const consumptionSeries = hours.map((h) => {
-    const entry = consumptionData.find((d) => d.hour?.startsWith(h))
-    return entry ? entry.consumption : 0
+    const entry = consumptionData.find((d) => String(d.hour ?? '').startsWith(h))
+    const raw = entry ? entry.consumption : 0
+    const num = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/,/g, ''))
+    return Number.isFinite(num) ? num : 0
   })
 
   const costSeries = hours.map((h) => {
-    const entry = costData.find((d) => d.hour?.startsWith(h))
-    return entry ? entry.cost : 0
+    const entry = costData.find((d) => String(d.hour ?? '').startsWith(h))
+    const raw = entry ? entry.cost : 0
+    const num = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/,/g, ''))
+    return Number.isFinite(num) ? num : 0
   })
 
-  const barColors = hours.map((h) => getBarColor(parseInt(h)))
+  const barColors = hours.map((h) => getBarColor(parseInt(h, 10)))
 
   const options = {
     chart: { type: 'column', height: 350, backgroundColor: 'transparent' },
@@ -145,13 +150,27 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
     xAxis: { categories: hours, title: { text: 'Hour of Day' } },
     yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)' } },
     tooltip: {
+      // Use point.index to reliably find the correct numeric value and avoid string indexing issues.
       formatter: function () {
-        const hour = this.x
-        const val = graphType === 'consumption' ? consumptionSeries[hour] : costSeries[hour]
-        const slot = getTimeSlot(parseInt(hour))
-        return `<b>${hour}:00</b> (${slot})<br/><b>${
+        const idx =
+          this.point && typeof this.point.index === 'number'
+            ? this.point.index
+            : typeof this.x === 'number'
+            ? this.x
+            : parseInt(String(this.x).slice(0, 2), 10) || 0
+
+        const hourLabel = typeof this.x === 'string' ? this.x : hours[idx]
+        const val = graphType === 'consumption' ? consumptionSeries[idx] : costSeries[idx]
+        const slot = getTimeSlot(parseInt(hours[idx], 10))
+
+        const formattedValue =
+          graphType === 'consumption'
+            ? `${val.toFixed(2)} Wh`
+            : `₹${val.toFixed(2)}`
+
+        return `<b>${hourLabel}:00</b> (${slot})<br/><b>${
           graphType === 'consumption' ? 'Consumption' : 'Cost'
-        }:</b> ${graphType === 'consumption' ? val.toFixed(2) + ' Wh' : '₹' + val.toFixed(2)}`
+        }:</b> ${formattedValue}`
       },
     },
     series: [
@@ -214,11 +233,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
       </div>
 
       {/* ✅ New Variance Component */}
-      <Variance
-        viewMode={viewMode}
-        scno={scno}
-        selectedDate={selectedDate}
-      />
+      <Variance viewMode={viewMode} scno={scno} selectedDate={selectedDate} />
     </div>
   )
 }

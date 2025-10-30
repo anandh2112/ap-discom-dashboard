@@ -1,9 +1,17 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import TODTable from "./TODtable"
 import TODPie from "./TODpie"
 
 export default function TODInsights() {
-  const [viewMode, setViewMode] = useState("table")
+  const [viewMode, setViewMode] = useState(() => {
+    // Load from localStorage, or default to "table"
+    return localStorage.getItem("todViewMode") || "table"
+  })
+
+  // Save the view mode whenever it changes
+  useEffect(() => {
+    localStorage.setItem("todViewMode", viewMode)
+  }, [viewMode])
 
   return (
     <div className="p-2 font-poppins">

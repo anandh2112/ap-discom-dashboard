@@ -11,7 +11,7 @@ import { useState } from "react"
 
 export default function Sidebar() {
   const location = useLocation()
-  const [openInsights, setOpenInsights] = useState(false)
+  const [openInsights, setOpenInsights] = useState(true)
 
   const links = [
     { to: "/", label: "Overview", icon: <Home size={15} /> },

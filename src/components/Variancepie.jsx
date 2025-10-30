@@ -167,9 +167,6 @@ export default function VariancePie() {
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-center font-semibold text-gray-700 mb-3 text-sm">
-          Variance Summary
-        </h3>
         <table className="w-full text-sm text-center border border-gray-200">
           <thead className="bg-gray-100">
             <tr>

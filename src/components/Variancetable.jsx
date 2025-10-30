@@ -354,7 +354,7 @@ export default function VarianceTable() {
   }
 
   return (
-    <div className=" bg-white p-4 rounded-lg shadow-md">
+    <div className=" bg-white p-3 rounded-lg shadow-md">
       {isOffline && (
         <div className="bg-yellow-200 text-yellow-900 p-2 rounded mb-4 text-center">
           You are offline. Showing cached data if available.
@@ -362,14 +362,14 @@ export default function VarianceTable() {
       )}
 
       {/* Filters & Sort (single row, same style) */}
-      <div className="flex flex-wrap items-center justify-around gap-2 mb-6">
+      <div className="flex flex-nowrap items-center justify-around mb-6">
         {/* View select */}
         <label className="flex items-center gap-2 text-sm">
           <span className="text-xs text-gray-600">Col.</span>
           <select
             value={view}
             onChange={(e) => setView(e.target.value)}
-            className="px-2 py-1 border rounded text-sm"
+            className="px-1 py-1 border rounded text-xs"
           >
             {viewOptions.map((v) => (
               <option key={v} value={v}>{v}</option>
@@ -388,26 +388,26 @@ export default function VarianceTable() {
                 placeholder="min"
                 value={avgMin}
                 onChange={(e) => setAvgMin(e.target.value)}
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-20 px-1 py-1 border rounded text-xs"
               />
-              <span className="text-xs">—</span>
+              <span className="text-xs">-</span>
               <input
                 type="number"
                 step="any"
                 placeholder="max"
                 value={avgMax}
                 onChange={(e) => setAvgMax(e.target.value)}
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-20 px-1 py-1 border rounded text-xs"
               />
             </div>
 
             {/* Sort for Average */}
-            <div className="flex items-center gap-2 ml-1">
+            <div className="flex items-center gap-1">
               <span className="text-xs text-gray-600">Sort by</span>
               <select
                 value={sortMetric}
                 onChange={(e) => setSortMetric(e.target.value)}
-                className="px-2 py-1 border rounded text-sm"
+                className="px-1 py-1 border rounded text-xs"
               >
                 <option value="average">Average</option>
               </select>
@@ -445,9 +445,9 @@ export default function VarianceTable() {
                 placeholder="min"
                 value={hourMin}
                 onChange={(e) => setHourMin(e.target.value)}
-                className="w-16 px-2 py-1 border rounded text-sm"
+                className="w-[3vw] px-1 py-1 border rounded text-xs"
               />
-              <span className="text-xs">—</span>
+              <span className="text-xs">-</span>
               <input
                 type="number"
                 min={0}
@@ -455,7 +455,7 @@ export default function VarianceTable() {
                 placeholder="max"
                 value={hourMax}
                 onChange={(e) => setHourMax(e.target.value)}
-                className="w-16 px-2 py-1 border rounded text-sm"
+                className="w-[3vw] px-1 py-1 border rounded text-xs"
               />
             </div>
 
@@ -468,16 +468,16 @@ export default function VarianceTable() {
                 placeholder="min"
                 value={valMin}
                 onChange={(e) => setValMin(e.target.value)}
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-[4vw] px-1 py-1 border rounded text-xs"
               />
-              <span className="text-xs">—</span>
+              <span className="text-xs">-</span>
               <input
                 type="number"
                 step="any"
                 placeholder="max"
                 value={valMax}
                 onChange={(e) => setValMax(e.target.value)}
-                className="w-20 px-2 py-1 border rounded text-sm"
+                className="w-[4vw] px-1 py-1 border rounded text-xs"
               />
             </div>
 
@@ -490,26 +490,26 @@ export default function VarianceTable() {
                 placeholder="min"
                 value={pctMin}
                 onChange={(e) => setPctMin(e.target.value)}
-                className="w-16 px-2 py-1 border rounded text-sm"
+                className="w-[3vw] px-1 py-1 border rounded text-xs"
               />
-              <span className="text-xs">—</span>
+              <span className="text-xs">-</span>
               <input
                 type="number"
                 step="any"
                 placeholder="max"
                 value={pctMax}
                 onChange={(e) => setPctMax(e.target.value)}
-                className="w-16 px-2 py-1 border rounded text-sm"
+                className="w-[3vw] px-1 py-1 border rounded text-xs"
               />
             </div>
 
             {/* Category dropdown */}
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-1 text-xs">
               <span className="text-xs text-gray-600">Category</span>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-2 py-1 border rounded text-sm"
+                className="px-1 py-1 border rounded text-xs"
               >
                 {categoryOptions.map((c) => (
                   <option key={c} value={c}>{c.replace("_", " ")}</option>
@@ -518,12 +518,12 @@ export default function VarianceTable() {
             </label>
 
             {/* Sort controls for Peak/Low */}
-            <div className="flex items-center gap-2 ml-1">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600">Sort by</span>
               <select
                 value={sortMetric}
                 onChange={(e) => setSortMetric(e.target.value)}
-                className="px-2 py-1 border rounded text-sm"
+                className="px-1 py-1 border rounded text-xs"
               >
                 <option value="hour">Hour</option>
                 <option value="value">Value</option>
