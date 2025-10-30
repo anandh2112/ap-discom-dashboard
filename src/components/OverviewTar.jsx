@@ -1,29 +1,120 @@
+import { useEffect, useState } from "react"
 import Highcharts from "highcharts"
 import HighchartsReact from "highcharts-react-official"
 
 export default function OverviewTar() {
+  const [tariffData, setTariffData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  const CACHE_KEY = "tariffDataCache"
+  const CACHE_TIME_KEY = "tariffDataCacheTime"
+  const CACHE_DURATION = 12 * 60 * 60 * 1000 // 12 hours
+
+  // Detect online/offline
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY)
+        const cachedTime = localStorage.getItem(CACHE_TIME_KEY)
+        const now = Date.now()
+
+        // Use cache if valid
+        if (cached && cachedTime && now - cachedTime < CACHE_DURATION) {
+          setTariffData(JSON.parse(cached))
+          setLoading(false)
+          return
+        }
+
+        // If offline, fallback to cache
+        if (isOffline) {
+          if (cached) {
+            setTariffData(JSON.parse(cached))
+          } else {
+            setError("Offline and no cached data available.")
+          }
+          setLoading(false)
+          return
+        }
+
+        // Fetch from API
+        const response = await fetch(
+          "https://ee.elementsenergies.com/api/fetchAllConsumersTariffHighCount"
+        )
+        if (!response.ok) throw new Error("Failed to fetch data")
+        const data = await response.json()
+
+        const counts = data["HighConsumptionTariffCounts"]
+
+        // Format for Highcharts stacked bar
+        const formattedData = [
+          { name: "Peak", data: [counts["Peak"] || 0], color: "#FF6B6B" },
+          { name: "Off-Peak", data: [counts["Off-Peak"] || 0], color: "#FFD93D" },
+          { name: "Normal", data: [counts["Normal"] || 0], color: "#6BCB77" },
+        ]
+
+        setTariffData(formattedData)
+
+        // Cache result
+        localStorage.setItem(CACHE_KEY, JSON.stringify(formattedData))
+        localStorage.setItem(CACHE_TIME_KEY, now.toString())
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [isOffline])
+
   const tariffOptions = {
     chart: { type: "bar", height: 250 },
     title: { text: "Consumers - Tariff", style: { fontSize: "16px" } },
     xAxis: { categories: ["Tariff Category"] },
     yAxis: {
       min: 0,
-      title: { text: "Total (%)" },
-      labels: { format: "{value}%" },
+      title: { text: "Total Consumers" },
+      labels: { format: "{value}" },
     },
     legend: { reversed: true },
-    plotOptions: { series: { stacking: "percent" } },
-    series: [
-      { name: "High", data: [45], color: "#FF6B6B" },
-      { name: "Regular", data: [35], color: "#FFD93D" },
-      { name: "Low", data: [20], color: "#6BCB77" },
-    ],
+    plotOptions: { series: { stacking: "normal" } },
+    series: tariffData,
     credits: { enabled: false },
   }
 
   return (
-    <div className="bg-white shadow-md rounded-2xl p-3">
-      <HighchartsReact highcharts={Highcharts} options={tariffOptions} />
+    <div className="bg-white shadow-md rounded-2xl p-3 font-poppins relative">
+      {/* Offline Banner */}
+      {isOffline && (
+        <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded-md mb-2 text-center">
+          You are offline. Showing cached data if available.
+        </div>
+      )}
+
+      <div className="flex justify-center items-center">
+        {loading ? (
+          <p className="text-gray-500 text-sm">Loading...</p>
+        ) : error ? (
+          <p className="text-red-500 text-sm">Error: {error}</p>
+        ) : (
+          <HighchartsReact highcharts={Highcharts} options={tariffOptions} />
+        )}
+      </div>
     </div>
   )
 }
