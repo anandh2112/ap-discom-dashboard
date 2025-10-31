@@ -87,7 +87,7 @@ export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMod
       ),
     },
     {
-      title: 'Consumption (Wh)',
+      title: 'Consumption (kWh)',
       value:
         viewMode === 'Day' || viewMode === 'Week' || viewMode === 'Month'
           ? loading
@@ -108,7 +108,19 @@ export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMod
             : data.Cost?.toLocaleString() || '-'
           : '12,500',
     },
-    { title: 'CO₂ Emissions', value: '35 kg' },
+    {
+      title: 'Carbon Footprint (kg CO₂)',
+      value:
+        viewMode === 'Day' || viewMode === 'Week' || viewMode === 'Month'
+          ? loading
+            ? 'Calculating...'
+            : error
+            ? error
+            : data.Consumption
+            ? (data.Consumption * 0.82).toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : '-'
+          : '35 kg',
+    },
   ]
 
   return (

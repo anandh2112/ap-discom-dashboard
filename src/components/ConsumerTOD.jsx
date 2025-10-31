@@ -95,7 +95,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   const todOptions = {
     chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
     title: { text: '' }, // ❌ Remove chart title
-    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} Wh)' },
+    tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} kWh)' },
     accessibility: { point: { valueSuffix: '%' } },
     plotOptions: {
       pie: {

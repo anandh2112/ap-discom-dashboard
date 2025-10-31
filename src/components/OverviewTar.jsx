@@ -63,8 +63,8 @@ export default function OverviewTar() {
         // Format for Highcharts stacked bar
         const formattedData = [
           { name: "Peak", data: [counts["Peak"] || 0], color: "#FF6B6B" },
-          { name: "Off-Peak", data: [counts["Off-Peak"] || 0], color: "#FFD93D" },
-          { name: "Normal", data: [counts["Normal"] || 0], color: "#6BCB77" },
+          { name: "Normal", data: [counts["Normal"] || 0], color: "#FFD93D" },
+          { name: "Off-Peak", data: [counts["Off-Peak"] || 0], color: "#6BCB77" },
         ]
 
         setTariffData(formattedData)

@@ -4,8 +4,9 @@ import VariancePie from "./Variancepie"
 
 export default function VarianceInsights() {
   const [viewMode, setViewMode] = useState(() => {
-    // Load from localStorage, or default to "table"
-    return localStorage.getItem("varianceViewMode") || "table"
+    // Default to "table" if nothing in localStorage
+    const saved = localStorage.getItem("varianceViewMode")
+    return saved === "chart" ? "chart" : "table"
   })
 
   // Store the viewMode whenever it changes

@@ -57,12 +57,12 @@ export default function OverviewTOD() {
         if (!response.ok) throw new Error("Failed to fetch data")
         const data = await response.json()
 
-        // Convert API data to Highcharts format
+        // Convert API data to Highcharts format with colors
         const formattedData = [
-          { name: "Peak-1", y: data["Peak-1"] || 0 },
-          { name: "Peak-2", y: data["Peak-2"] || 0 },
-          { name: "Off-Peak", y: data["Off-Peak"] || 0 },
-          { name: "Normal", y: data["Normal"] || 0 },
+          { name: "Peak-1", y: data["Peak-1"] || 0, color: "#FF6B6B" },     
+          { name: "Peak-2", y: data["Peak-2"] || 0, color: "#4D96FF" },     
+          { name: "Normal", y: data["Normal"] || 0, color: "#FFD93D" },     
+          { name: "Off-Peak", y: data["Off-Peak"] || 0, color: "#6BCB77" }, 
         ]
 
         setTodData(formattedData)
