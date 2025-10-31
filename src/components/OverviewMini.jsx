@@ -57,12 +57,12 @@ export default function OverviewMini() {
           { title: "Active Consumers", value: data.ActiveConsumers.toLocaleString() },
           {
             title: "Total Consumption",
-            value: `${data.TotalConsumption_mWh.toLocaleString()} kWh`,
+            value: `${data.TotalConsumption_mWh.toLocaleString()} MWh`,
           },
           { title: "Peak Demand", value: `${data.PeakDemand.toLocaleString()} kVA` },
           {
             title: "Carbon Footprint",
-            value: `${(data.TotalConsumption_mWh * 820).toLocaleString()} kg CO₂`,
+            value: `${(data.TotalConsumption_mWh * 0.82).toFixed(2)} tons CO₂`,
           },
         ]
 
