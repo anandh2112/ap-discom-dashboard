@@ -6,25 +6,30 @@ export default function OverviewVar() {
   const [varianceData, setVarianceData] = useState({ high: [], low: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [viewMode, setViewMode] = useState("peak") // "peak" or "low"
+  const [viewMode, setViewMode] = useState("peak")
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
   const CACHE_KEY = "varianceDataCache"
   const CACHE_TIME_KEY = "varianceDataCacheTime"
+  const VIEW_MODE_KEY = "varianceViewMode"
   const CACHE_DURATION = 12 * 60 * 60 * 1000 // 12 hours
 
-  // Detect online/offline status
+  // Detect online/offline
   useEffect(() => {
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
-
     window.addEventListener("online", handleOnline)
     window.addEventListener("offline", handleOffline)
-
     return () => {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
+  }, [])
+
+  // Load last selected view mode
+  useEffect(() => {
+    const savedView = localStorage.getItem(VIEW_MODE_KEY)
+    if (savedView) setViewMode(savedView)
   }, [])
 
   const fetchData = async () => {
@@ -33,14 +38,12 @@ export default function OverviewVar() {
       const cachedTime = localStorage.getItem(CACHE_TIME_KEY)
       const now = Date.now()
 
-      // Use cache if valid
       if (cached && cachedTime && now - cachedTime < CACHE_DURATION) {
         setVarianceData(JSON.parse(cached))
         setLoading(false)
         return
       }
 
-      // Offline fallback
       if (isOffline) {
         if (cached) {
           setVarianceData(JSON.parse(cached))
@@ -51,7 +54,6 @@ export default function OverviewVar() {
         return
       }
 
-      // Fetch from API
       const res = await fetch("https://ee.elementsenergies.com/api/fetchAllConsumersVariance")
       if (!res.ok) throw new Error("Failed to fetch data")
       const data = await res.json()
@@ -74,8 +76,6 @@ export default function OverviewVar() {
       const formattedData = { high: highData, low: lowData }
 
       setVarianceData(formattedData)
-
-      // Cache result
       localStorage.setItem(CACHE_KEY, JSON.stringify(formattedData))
       localStorage.setItem(CACHE_TIME_KEY, now.toString())
     } catch (err) {
@@ -91,12 +91,10 @@ export default function OverviewVar() {
 
   const categories = ["Very Low", "Low", "Medium", "High", "Very High"]
 
+  // Important fix: always create a *new* object for options so Highcharts updates
   const varianceOptions = {
-    chart: { type: "column", height: 250 },
-    title: {
-      text: "Consumers - Variance",
-      style: { fontSize: "16px", fontFamily: "Poppins, sans-serif" },
-    },
+    chart: { type: "column", height: 200 },
+    title: { text: null },
     xAxis: { categories },
     yAxis: { title: { text: "Consumers" } },
     series: [
@@ -112,6 +110,13 @@ export default function OverviewVar() {
     ],
     legend: { enabled: false },
     credits: { enabled: false },
+  }
+
+  const handleModeChange = (mode) => {
+    if (mode !== viewMode) {
+      setViewMode(mode)
+      localStorage.setItem(VIEW_MODE_KEY, mode)
+    }
   }
 
   if (loading)
@@ -130,33 +135,39 @@ export default function OverviewVar() {
 
   return (
     <div className="bg-white shadow-md rounded-2xl p-3 font-poppins relative">
-      {/* Offline Banner */}
       {isOffline && (
         <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded-md mb-2 text-center">
           You are offline. Showing cached data if available.
         </div>
       )}
 
-      {/* Header with toggle buttons */}
+      {/* Header Row */}
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-lg font-semibold">Consumers - Variance</h1>
+        {/* Header centered using flex-grow and text-center */}
+        <div className="flex-1 text-center">
+          <h1 className="text-md font-semibold">Consumers - Variance</h1>
+        </div>
+
+        {/* Buttons on right */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setViewMode("peak")}
-            className={`px-2 py-1 rounded-lg border ${
+            onClick={() => handleModeChange("peak")}
+            title="Peak"
+            className={`px-2 py-1 rounded-lg border transition-all ${
               viewMode === "peak"
                 ? "bg-green-100 border-green-500 text-green-600"
-                : "border-gray-300 text-gray-500"
+                : "border-gray-300 text-gray-500 hover:bg-gray-100"
             }`}
           >
             <span className="text-green-600">▲</span>
           </button>
           <button
-            onClick={() => setViewMode("low")}
-            className={`px-2 py-1 rounded-lg border ${
+            onClick={() => handleModeChange("low")}
+            title="Low"
+            className={`px-2 py-1 rounded-lg border transition-all ${
               viewMode === "low"
                 ? "bg-red-100 border-red-500 text-red-600"
-                : "border-gray-300 text-gray-500"
+                : "border-gray-300 text-gray-500 hover:bg-gray-100"
             }`}
           >
             <span className="text-red-600">▼</span>
@@ -164,8 +175,11 @@ export default function OverviewVar() {
         </div>
       </div>
 
-      {/* Chart */}
-      <HighchartsReact highcharts={Highcharts} options={varianceOptions} />
+      <HighchartsReact
+        highcharts={Highcharts}
+        options={varianceOptions}
+        key={viewMode} // ✅ Force re-render on mode change
+      />
     </div>
   )
 }

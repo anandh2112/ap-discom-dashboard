@@ -83,8 +83,8 @@ export default function OverviewTar() {
   }, [isOffline])
 
   const tariffOptions = {
-    chart: { type: "bar", height: 250 },
-    title: { text: "Consumers - Tariff", style: { fontSize: "16px" } },
+    chart: { type: "bar", height: 200 },
+    title: { text: null }, // ✅ Removed chart title
     xAxis: { categories: ["Tariff Category"] },
     yAxis: {
       min: 0,
@@ -99,6 +99,13 @@ export default function OverviewTar() {
 
   return (
     <div className="bg-white shadow-md rounded-2xl p-3 font-poppins relative">
+      {/* Card Header */}
+      <div className="flex items-center justify-center mb-2">
+        <h1 className="text-md font-semibold">
+          Consumers - Tariff
+        </h1>
+      </div>
+
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded-md mb-2 text-center">

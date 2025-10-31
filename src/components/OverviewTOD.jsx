@@ -81,8 +81,8 @@ export default function OverviewTOD() {
   }, [isOffline])
 
   const todOptions = {
-    chart: { type: "pie", height: 250 },
-    title: { text: "Consumption - TOD", style: { fontSize: "16px" } },
+    chart: { type: "pie", height: 210 },
+    title: { text: null },
     tooltip: { pointFormat: "<b>{point.percentage:.1f}%</b> ({point.y:.2f} MWh)" },
     accessibility: { point: { valueSuffix: "%" } },
     plotOptions: {
@@ -99,7 +99,7 @@ export default function OverviewTOD() {
       layout: "vertical",
       itemMarginTop: 10,
       itemMarginBottom: 5,
-      y: 15,
+      y: -5,
       x: -10,
     },
     series: [
@@ -114,6 +114,11 @@ export default function OverviewTOD() {
 
   return (
     <div className="bg-white shadow-md rounded-2xl p-3 font-poppins relative">
+      {/* Card Header */}
+      <div className="flex items-center justify-center mb-2">
+        <h1 className="text-md font-semibold">Consumption - TOD</h1>
+      </div>
+
       {/* Offline Banner */}
       {isOffline && (
         <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded-md mb-2 text-center">
