@@ -2,6 +2,7 @@ import { useParams, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import ConsumptionGraph from './Consumptiongraph'
 import Loadshift from './Loadshift'
+import AvgPeakDemand from './Avgpeakdemand'
 import PeakDemand from './Peakdemand'
 import ConsumerInfo from './Consumerinfo'
 import ConsumerTOD from './ConsumerTOD'
@@ -62,6 +63,7 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       {/* Peak Demand & TOD Section */}
       <div className="mt-8 flex gap-4">
         <div className="flex-6">
+          {/* <AvgPeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} /> */}
           <PeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
         </div>
         <div className="flex-4">

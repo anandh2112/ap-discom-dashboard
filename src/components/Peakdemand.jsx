@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
 import { AiOutlineInfoCircle } from 'react-icons/ai'
@@ -9,158 +9,58 @@ if (Highcharts?.Chart?.prototype?.credits) {
 }
 
 export default function PeakDemand({ scno, selectedDate, viewMode }) {
+  const [localViewMode, setLocalViewMode] = useState(viewMode)
+
+  // Keep localViewMode in sync with parent prop
+  useEffect(() => {
+    setLocalViewMode(viewMode)
+  }, [viewMode])
+
+  // --- Derived date parts ---
+  const dateObj = new Date(selectedDate)
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const formattedMonth = `${year}-${month}`
+  const formattedYear = `${year}`
+
+  // --- Mock Data ---
   const [data, setData] = useState([])
   const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [offline, setOffline] = useState(false)
-  const [activeDayType, setActiveDayType] = useState('Mon-Fri')
-  const [monthlyData, setMonthlyData] = useState(null)
-  const [yearlyData, setYearlyData] = useState(null)
-  const [yearEnabled, setYearEnabled] = useState(false)
 
-  // Helper: cache key
-  const getCacheKey = (mode, date, sc) => `peakDemand_${mode}_${date}_${sc}`
-
-  const saveToCache = (key, data) => {
-    try {
-      const payload = { data, timestamp: new Date().toISOString() }
-      localStorage.setItem(key, JSON.stringify(payload))
-    } catch (err) {
-      console.warn('Failed to save cache:', err)
+  // --- Dynamic X-axis labels ---
+  useMemo(() => {
+    if (localViewMode === 'Month') {
+      const daysInMonth = new Date(year, dateObj.getMonth() + 1, 0).getDate()
+      setCategories(Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`))
+      setData(Array.from({ length: daysInMonth }, () => Math.floor(Math.random() * 500 + 200)))
+    } else if (localViewMode === 'Year') {
+      setCategories(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+      setData(Array.from({ length: 12 }, () => Math.floor(Math.random() * 800 + 400)))
+    } else {
+      setCategories([])
+      setData([])
     }
-  }
+  }, [localViewMode, selectedDate])
 
-  const loadFromCache = (key) => {
-    try {
-      const cached = localStorage.getItem(key)
-      if (!cached) return null
-      const { data, timestamp } = JSON.parse(cached)
-      const ageMinutes = (Date.now() - new Date(timestamp).getTime()) / 60000
-      if (ageMinutes < 60) return data
-      return null
-    } catch {
-      return null
-    }
-  }
-
-  const fetchPeakDemand = async () => {
-    if (!scno || !selectedDate) return
-    setLoading(true)
-    setOffline(false)
-
-    const modeKey = yearEnabled ? 'Year' : viewMode
-    const dateKey = yearEnabled
-      ? new Date(selectedDate).getFullYear()
-      : selectedDate
-    const cacheKey = getCacheKey(modeKey, dateKey, scno)
-
-    // Try cache first
-    const cachedData = loadFromCache(cacheKey)
-    if (cachedData) {
-      if (yearEnabled) {
-        setYearlyData(cachedData)
-        updateDataFromDayType(cachedData, activeDayType)
-      } else if (viewMode === 'Month') {
-        setMonthlyData(cachedData)
-        updateDataFromDayType(cachedData, activeDayType)
-      } else {
-        const hours = cachedData.map((item) =>
-          item.hour.includes(':')
-            ? item.hour.split(':')[0].padStart(2, '0')
-            : item.hour
-        )
-        const values = cachedData.map((item) =>
-          parseFloat(item.avgPeakDemand.toFixed(2))
-        )
-        setCategories(hours)
-        setData(values)
-        setMonthlyData(null)
-      }
-      setLoading(false)
-    }
-
-    try {
-      if (yearEnabled) {
-        const year = new Date(selectedDate).getFullYear()
-        const response = await fetch(
-          `https://ee.elementsenergies.com/api/fetchYearlyHourlyAvgPeakDemand?scno=${scno}&year=${year}`
-        )
-        const res = await response.json()
-        setYearlyData(res)
-        saveToCache(cacheKey, res)
-        updateDataFromDayType(res, activeDayType)
-      } else if (viewMode === 'Month') {
-        const monthString = selectedDate.slice(0, 7)
-        const response = await fetch(
-          `https://ee.elementsenergies.com/api/fetchMonthlyHourlyAvgPeakDemand?scno=${scno}&month=${monthString}`
-        )
-        const res = await response.json()
-        setMonthlyData(res)
-        saveToCache(cacheKey, res)
-        updateDataFromDayType(res, activeDayType)
-      } else {
-        const response = await fetch(
-          `https://ee.elementsenergies.com/api/fetchDailyHourlyAvgPeakDemand?scno=${scno}&date=${selectedDate}`
-        )
-        const res = await response.json()
-        saveToCache(cacheKey, res)
-        const hours = res.map((item) =>
-          item.hour.includes(':')
-            ? item.hour.split(':')[0].padStart(2, '0')
-            : item.hour
-        )
-        const values = res.map((item) =>
-          parseFloat(item.avgPeakDemand.toFixed(2))
-        )
-        setCategories(hours)
-        setData(values)
-        setMonthlyData(null)
-      }
-    } catch (error) {
-      console.warn('Network unavailable, using cached data if available')
-      setOffline(true)
-      if (!cachedData) {
-        setCategories([])
-        setData([])
-        setMonthlyData(null)
-        setYearlyData(null)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const updateDataFromDayType = (dataset, dayType) => {
-    const selectedKey = dataset[dayType] ? dayType : 'All'
-    const hours = Object.keys(dataset[selectedKey] || {})
-    const values = Object.values(dataset[selectedKey] || {}).map((v) =>
-      parseFloat(v.toFixed(2))
-    )
-    setCategories(hours.map((h) => h.split(':')[0].padStart(2, '0')))
-    setData(values)
-  }
-
-  // Fetch data whenever relevant dependencies change
-  useEffect(() => {
-    fetchPeakDemand()
-  }, [scno, selectedDate, viewMode, yearEnabled, activeDayType])
-
+  // --- Chart Options ---
   const options = {
     chart: { type: 'area', height: 350 },
     title: { text: null },
     xAxis: {
       categories,
-      title: { text: 'Hour of Day' },
+      title: {
+        text: localViewMode === 'Month' ? 'Day of Month' : localViewMode === 'Year' ? 'Month' : '',
+      },
       labels: { style: { fontSize: '11px' } },
     },
     yAxis: {
-      title: { text: 'Average Peak Demand (W)' },
+      title: { text: 'Peak Demand (kVA)' },
       labels: { style: { fontSize: '11px' } },
       gridLineColor: '#f0f0f0',
     },
     series: [
       {
-        name: 'Average Peak Demand',
+        name: 'Peak Demand',
         data,
         color: '#007bff',
         fillColor: 'rgba(0,123,255,0.2)',
@@ -175,80 +75,54 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       borderColor: '#ccc',
       style: { fontSize: '12px' },
       formatter: function () {
-        return `<b>${this.x}:00</b><br/>Average Peak Demand: <b>${this.y} W</b>`
+        const label = localViewMode === 'Month' ? `Day ${this.x}` : this.x
+        return `<b>${label}</b><br/>Peak Demand: <b>${this.y} kVA</b>`
       },
     },
   }
 
+  const notApplicable = localViewMode === 'Day' || localViewMode === 'Week'
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md">
-      {/* Header Row */}
+    <div className="relative bg-white p-4 rounded-lg shadow-md">
+      {/* Heading */}
       <div className="flex justify-between items-center mb-3">
-        {/* Left-aligned Title */}
-        <h2 className="text-lg font-semibold text-center">
-          Average Peak Demand
-        </h2>
+        <h2 className="text-lg font-semibold text-center flex-1">Peak Demand</h2>
 
-        {/* Right-aligned Buttons */}
-        <div className="flex items-center gap-2">
-          {/* Day toggles only for Month or Year */}
-          {(viewMode === 'Month' || yearEnabled) &&
-            ['Mon-Fri', 'Sat', 'Sun', 'All'].map((dayType) => (
-              <button
-                key={dayType}
-                onClick={() => setActiveDayType(dayType)}
-                className={`px-3 py-1 text-sm rounded-md transition-all hover:cursor-pointer ${
-                  activeDayType === dayType
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {dayType}
-              </button>
-            ))}
-
+        {/* Right controls */}
+        <div className="flex items-center space-x-2 relative">
           {/* Year toggle */}
           <button
-            onClick={() => setYearEnabled(!yearEnabled)}
-            className={`px-3 py-1 text-sm rounded-md transition-all hover:cursor-pointer ${
-              yearEnabled
+            onClick={() => setLocalViewMode('Year')}
+            className={`px-3 py-1 text-sm rounded-md ${
+              localViewMode === 'Year'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
             }`}
           >
             Year
           </button>
 
-          {/* Info icon */}
+          {/* Info icon tooltip */}
           <div className="relative group">
             <AiOutlineInfoCircle
               className="ml-1 text-gray-500 cursor-pointer"
               size={18}
             />
             <div className="absolute right-0 bottom-full mb-1 w-64 bg-gray-800 text-white text-xs rounded-md p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              Viewmode "Week" doesn't apply to this component. Average Peak
-              Demand is available for Day, Month, and Year only.
+              Viewmode "Day" and "Week" doesn't apply to this component. Peak Demand is available for Day, Month, and Year only.
             </div>
           </div>
         </div>
       </div>
 
-      {/* Offline Notice */}
-      {offline && (
-        <div className="text-center text-yellow-600 text-sm mb-2">
-          ⚠️ Offline mode: showing last cached data
-        </div>
-      )}
-
-      {/* Chart / Loading / Empty States */}
-      {loading ? (
+      {/* Chart or message */}
+      {notApplicable ? (
         <p className="text-gray-500 text-sm text-center">
-          Loading peak demand data...
+          View mode "{localViewMode}" not applicable for Peak Demand.
         </p>
       ) : data.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center">
-          No data available. Please check your connection.
-        </p>
+        <p className="text-gray-500 text-sm text-center">No data available yet.</p>
       ) : (
         <HighchartsReact highcharts={Highcharts} options={options} />
       )}
