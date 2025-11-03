@@ -1,11 +1,14 @@
 import { useParams, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import ConsumptionGraph from './Consumptiongraph'
+import HourlyConsumption from './Hourlyconsumption'
 import Loadshift from './Loadshift'
 import AvgPeakDemand from './Avgpeakdemand'
 import PeakDemand from './Peakdemand'
 import ConsumerInfo from './Consumerinfo'
 import ConsumerTOD from './ConsumerTOD'
+import ConsumerHeatmap from './Consumerheatmap'
+import Consumption from './Consumption'
+
 
 export default function ConsumerDetail({ viewMode, selectedDate }) {
   const { id } = useParams()
@@ -50,9 +53,9 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       {/* Consumer Info Cards */}
       <ConsumerInfo consumerName={consumerName} scno={scno} selectedDate={selectedDate} viewMode={viewMode}  />
 
-      {/* Consumption Graph */}
+      {/* Hourly Consumption Graph */}
       <div className="mt-4">
-        <ConsumptionGraph scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+        <HourlyConsumption scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
 
       {/* Load Shift Section */}
@@ -69,6 +72,16 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
         <div className="flex-4">
           <ConsumerTOD scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
         </div>
+      </div>
+
+      {/* Consumer Heatmap Section */}
+      <div className="mt-8">
+        <ConsumerHeatmap scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+      </div>
+
+      {/* Consumption */}
+      <div className="mt-8">
+        <Consumption scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
     </div>
   )

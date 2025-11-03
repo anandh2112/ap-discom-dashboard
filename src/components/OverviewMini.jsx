@@ -59,7 +59,7 @@ export default function OverviewMini() {
             title: "Total Consumption",
             value: `${data.TotalConsumption_mWh.toLocaleString()} MWh`,
           },
-          { title: "Peak Demand", value: `-` },
+          { title: "Peak Demand", value: `${data.PeakDemand.toLocaleString()} Va` },
           {
             title: "Carbon Footprint",
             value: `${(data.TotalConsumption_mWh * 0.82).toFixed(2)} tons CO₂`,

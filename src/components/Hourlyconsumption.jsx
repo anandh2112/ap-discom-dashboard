@@ -146,7 +146,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
 
   const options = {
     chart: { type: 'column', height: 350, backgroundColor: 'transparent' },
-    title: { text: '' },
+    title: { text: null },
     xAxis: { categories: hours, title: { text: 'Hour of Day' } },
     yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)' } },
     tooltip: {
