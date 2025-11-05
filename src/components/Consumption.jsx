@@ -11,12 +11,8 @@ export default function Consumption() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // default current month (0 = Jan)
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // 12 basic colors for the months
-  const monthColors = [
-    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-    '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-    '#bcbd22', '#17becf', '#aec7e8', '#ffbb78'
-  ];
+  // Base color for all months (e.g., blue tone)
+  const baseColor = '#1f77b4';
 
   // Dummy year-wise consumption data
   const yearData = useMemo(() => months.map(() => Math.floor(Math.random() * 1000) + 200), []);
@@ -30,26 +26,27 @@ export default function Consumption() {
 
   const weeklyData = useMemo(() => getWeeklyData(selectedMonth), [selectedMonth]);
 
-  // Create gradient colors for weekly bars based on selected month color
+  // Determine brightness relative to median week (3rd highest)
   const weeklyColors = useMemo(() => {
-    const baseColor = monthColors[selectedMonth];
-    const maxVal = Math.max(...weeklyData);
-    const minVal = Math.min(...weeklyData);
-    return weeklyData.map(val => {
-      // calculate brightness factor 0.5–1 depending on value
-      const factor = 0.5 + 0.5 * (val - minVal) / (maxVal - minVal || 1);
-      return Highcharts.color(baseColor).brighten(1 - factor).get();
-    });
-  }, [selectedMonth, weeklyData]);
+    const sorted = [...weeklyData].sort((a, b) => b - a); // descending
+    const medianVal = sorted[Math.min(2, sorted.length - 1)]; // 3rd highest or last available
 
-  // Yearly Chart Config
+    return weeklyData.map(val => {
+      // Positive => darker, Negative => lighter relative to median
+      const diffRatio = (val - medianVal) / medianVal;
+      const brightness = diffRatio > 0 ? -0.3 * diffRatio : 0.3 * Math.abs(diffRatio);
+      return Highcharts.color(baseColor).brighten(brightness).get();
+    });
+  }, [weeklyData]);
+
+  // Yearly Chart Config (single consistent color)
   const yearOptions = {
     chart: {
       type: 'column',
       height: 280,
       backgroundColor: '#fff',
     },
-    title: { text: null }, // Removed title
+    title: { text: null },
     xAxis: { categories: months, title: { text: null } },
     yAxis: { title: { text: 'Consumption (kWh)' } },
     tooltip: { pointFormat: 'Consumption: <b>{point.y} kWh</b>' },
@@ -60,27 +57,26 @@ export default function Consumption() {
         point: {
           events: {
             click: function () {
-              setSelectedMonth(this.x); // update month on click
+              setSelectedMonth(this.x);
             },
           },
         },
       },
-      series: { colorByPoint: true },
     },
     credits: { enabled: false },
     series: [
-      { 
-        name: 'Consumption', 
-        data: yearData.map((y, i) => ({ y, color: monthColors[i] })) 
+      {
+        name: 'Consumption',
+        data: yearData.map((y) => ({ y, color: baseColor })),
       },
     ],
     legend: { enabled: false },
   };
 
-  // Weekly Chart Config
+  // Weekly Chart Config (shades of same base color)
   const weekOptions = {
     chart: { type: 'column', height: 280, backgroundColor: '#fff' },
-    title: { text: null }, // Removed title
+    title: { text: null },
     xAxis: { categories: weeklyData.map((_, i) => `Week ${i + 1}`), title: { text: null } },
     yAxis: { title: { text: 'Consumption (kWh)' } },
     tooltip: { pointFormat: 'Consumption: <b>{point.y} kWh</b>' },
@@ -90,9 +86,9 @@ export default function Consumption() {
     },
     credits: { enabled: false },
     series: [
-      { 
-        name: 'Weekly Consumption', 
-        data: weeklyData.map((y, i) => ({ y, color: weeklyColors[i] })) 
+      {
+        name: 'Weekly Consumption',
+        data: weeklyData.map((y, i) => ({ y, color: weeklyColors[i] })),
       },
     ],
     legend: { enabled: false },
@@ -100,13 +96,15 @@ export default function Consumption() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg">
-      {/* Yearly Chart Card */}
+      {/* Yearly Chart */}
       <div className="bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">Yearly Consumption</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">
+          Yearly Consumption
+        </h2>
         <HighchartsReact highcharts={Highcharts} options={yearOptions} />
       </div>
 
-      {/* Weekly Chart Card */}
+      {/* Weekly Chart */}
       <div className="bg-white rounded-lg shadow-md p-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">
           {months[selectedMonth]} - Weekly Consumption
@@ -115,4 +113,4 @@ export default function Consumption() {
       </div>
     </div>
   );
-}
+} 
