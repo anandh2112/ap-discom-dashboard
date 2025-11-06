@@ -93,7 +93,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   }, [scno, selectedDate, viewMode, isOffline])
 
   const todOptions = {
-    chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
+    chart: { type: 'pie', height: 200, backgroundColor: 'transparent' },
     title: { text: '' }, // ❌ Remove chart title
     tooltip: { pointFormat: '<b>{point.percentage:.1f}%</b> ({point.y:.2f} kWh)' },
     accessibility: { point: { valueSuffix: '%' } },
@@ -103,7 +103,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
         cursor: 'pointer',
         dataLabels: { enabled: false },
         showInLegend: true,
-        center: ['40%', '50%'],
+        center: ['50%', '50%'],
       },
     },
     legend: {
@@ -111,7 +111,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
       verticalAlign: 'middle',
       layout: 'vertical',
       itemMarginTop: 10,
-      itemMarginBottom: 10,
+      itemMarginBottom: 5,
       itemStyle: { fontSize: '12px', fontWeight: '400' },
     },
     series: [
@@ -126,7 +126,7 @@ export default function ConsumerTOD({ scno, selectedDate, viewMode }) {
   }
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md h-full relative">
+    <div className="bg-white p-3 rounded-lg shadow-md h-full relative">
       {/* ⚠️ Offline Banner */}
       {isOffline && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-md shadow-sm">

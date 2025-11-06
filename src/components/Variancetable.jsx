@@ -1,15 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react"
 
-const CACHE_KEY = "varianceTableCache"
+const CACHE_KEY_BASE = "varianceTableCache"
 const CACHE_EXPIRY_HOURS = 12
 
-export default function VarianceTable() {
+// Map subViewMode (from parent) to the keys returned by the API
+const SUBKEY_MAP = {
+  "All": "All",
+  "M-F": "Mon-Fri",
+  "Mon-Fri": "Mon-Fri",
+  "Sat": "Sat",
+  "Sun": "Sun",
+}
+
+export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
-  // Filter / sort state
+  // Filter / sort state (these are local to the table and different from parent viewMode)
   const viewOptions = ["Average", "Average Peak", "Average Low"]
   const categoryOptions = ["any", "very_low", "low", "medium", "high", "very_high"]
 
@@ -29,8 +38,6 @@ export default function VarianceTable() {
   const [categoryFilter, setCategoryFilter] = useState("any")
 
   // Sorting
-  // For Average: metric will be "average"
-  // For Peak/Low: metric can be "hour" | "value" | "percent" | "category"
   const [sortMetric, setSortMetric] = useState("average")
   const [sortOrder, setSortOrder] = useState(null) // 'asc' | 'desc' | null
 
@@ -64,89 +71,106 @@ export default function VarianceTable() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Fetch data with caching
+  // Build the correct endpoint URL based on parent viewMode and selectedDate
+  function buildUrlAndCacheKey() {
+    // Normalize selectedDate to safe defaults
+    const now = new Date()
+    const defaultDate = now.toISOString().slice(0, 10) // YYYY-MM-DD
+    const sel = selectedDate || defaultDate
+
+    let url = "https://ee.elementsenergies.com/api/fetchAllHighLowAvgMFSTSD"
+    if (String(viewMode).toLowerCase() === "year") {
+      const year = String(sel).split("-")[0] || String(now.getFullYear())
+      url = `https://ee.elementsenergies.com/api/fetchYearlyHighLowAvgMFSTSD?year=${encodeURIComponent(year)}`
+    } else if (String(viewMode).toLowerCase() === "month") {
+      // pass YYYY-MM
+      const parts = String(sel).split("-")
+      const month = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : now.toISOString().slice(0, 7)
+      url = `https://ee.elementsenergies.com/api/fetchAllCHighLowAvgMFSTSDMonthwise?month=${encodeURIComponent(month)}`
+    } else {
+      // All - use the provided All endpoint (no params)
+      url = "https://ee.elementsenergies.com/api/fetchAllHighLowAvgMFSTSD"
+    }
+
+    const cacheKey = `${CACHE_KEY_BASE}:${url}`
+    return { url, cacheKey }
+  }
+
+  // Fetch data with caching (based on endpoint built above)
   async function fetchData() {
     setLoading(true)
     setError(null)
 
+    const { url, cacheKey } = buildUrlAndCacheKey()
+
     try {
-      const cachedRaw = localStorage.getItem(CACHE_KEY)
+      const cachedRaw = localStorage.getItem(cacheKey)
       if (cachedRaw) {
-        const parsed = JSON.parse(cachedRaw)
-        const now = Date.now()
-        if (now - parsed.timestamp < CACHE_EXPIRY_HOURS * 3600 * 1000) {
-          setData(parsed.data)
-          setLoading(false)
-          return
+        try {
+          const parsed = JSON.parse(cachedRaw)
+          const now = Date.now()
+          if (now - parsed.timestamp < CACHE_EXPIRY_HOURS * 3600 * 1000) {
+            setData(parsed.data)
+            setLoading(false)
+            return
+          }
+        } catch (err) {
+          // ignore and refetch
         }
       }
 
-      const res = await fetch("https://ee.elementsenergies.com/api/fetchAllHighLowAvg")
-      if (!res.ok) throw new Error("Failed to fetch data")
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to fetch data (${res.status})`)
       const result = await res.json()
 
-      // Transform API data safely (handle nulls)
       const formatted = (result || []).map((row) => ({
         consumer: row.Consumer ?? "-",
         serviceNo: row.SCNO ?? "-",
-        average: row.average?.consumption ?? null,
-        peak: {
-          hour: normalizeHour(row.high?.hour),
-          value: row.high?.avg_consumption ?? null,
-          percentValue:
-            row.high?.percent_increase_from_avg != null
-              ? row.high.percent_increase_from_avg
-              : null,
-          percent:
-            row.high?.percent_increase_from_avg != null
-              ? `${row.high.percent_increase_from_avg.toFixed(2)}%`
-              : null,
-          category: (row.high?.category ?? "-").toString().toLowerCase(),
-        },
-        low: {
-          hour: normalizeHour(row.low?.hour),
-          value: row.low?.avg_consumption ?? null,
-          percentValue:
-            row.low?.percent_decrease_from_avg != null
-              ? row.low.percent_decrease_from_avg
-              : null,
-          percent:
-            row.low?.percent_decrease_from_avg != null
-              ? `-${row.low.percent_decrease_from_avg.toFixed(2)}%`
-              : null,
-          category: (row.low?.category ?? "-").toString().toLowerCase(),
+        // Keep the raw sub-object so we can pick "All" / "Mon-Fri" / "Sat" / "Sun" later.
+        raw: {
+          All: row.All ?? null,
+          "Mon-Fri": row["Mon-Fri"] ?? null,
+          Sat: row.Sat ?? null,
+          Sun: row.Sun ?? null,
         },
       }))
 
+      // Additionally, flatten common fields (average/peak/low) for each sub when needed in the filter/sort code.
+      // But we'll compute those on-the-fly in the memoized pipeline for simplicity.
+
       setData(formatted)
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ timestamp: Date.now(), data: formatted })
-      )
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: formatted }))
+      } catch (e) {
+        // ignore localStorage write failures (e.g., storage full)
+      }
     } catch (err) {
-      setError(err.message)
-      // Try to fallback to cache if available
-      const cached = localStorage.getItem(CACHE_KEY)
+      setError(err.message ?? String(err))
+      // Try to fallback to cache if available (any cache for this URL)
+      const cached = localStorage.getItem(buildUrlAndCacheKey().cacheKey)
       if (cached) {
-        const parsed = JSON.parse(cached)
-        setData(parsed.data)
+        try {
+          const parsed = JSON.parse(cached)
+          setData(parsed.data)
+        } catch (e) {
+          // ignore
+        }
       }
     } finally {
       setLoading(false)
     }
   }
 
-  // Initial fetch
+  // Initial fetch and refetch when the parent timescale or selectedDate changes
   useEffect(() => {
     fetchData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, selectedDate])
 
-  // Update sortMetric defaults when view changes
-  // FIX: Don't blindly overwrite the user's selected sortMetric when switching between "Average Peak" and "Average Low".
-  // Only force the metric to "average" when switching to "Average". When switching between Peak/Low, preserve
-  // an existing Peak/Low metric (hour/value/percent/category) so sorting by hour continues to work as expected.
+  // Update sortMetric defaults when local "view" (Average / Average Peak / Low) changes
   useEffect(() => {
     if (view === "Average") {
       setSortMetric("average")
@@ -166,10 +190,8 @@ export default function VarianceTable() {
   function normalizeHour(h) {
     if (h === null || h === undefined) return null
     const s = String(h).trim()
-    // if contains ":" take first part
     const parts = s.split(":")
     const raw = parts[0]
-    // handle maybe "00", "0", "23"
     const asNum = Number(raw)
     if (!Number.isFinite(asNum) || asNum < 0 || asNum > 23) return null
     return Math.floor(asNum)
@@ -178,13 +200,10 @@ export default function VarianceTable() {
   // Numeric guard
   function toNumberSafe(v) {
     if (v === null || v === undefined || v === "") return null
-    // If it's already a number, return it directly (avoids parsing issues).
     if (typeof v === "number") {
       return Number.isFinite(v) ? v : null
     }
-    // Strings like "01:00" can't be parsed by Number(); ensure we handle only simple numeric strings
     const cleaned = String(v).trim()
-    // If contains ":" try to take the first segment like normalizeHour
     if (cleaned.includes(":")) {
       const parts = cleaned.split(":")
       const raw = parts[0]
@@ -195,7 +214,6 @@ export default function VarianceTable() {
     return Number.isFinite(n) ? n : null
   }
 
-  // Category order for sorting
   const categoryRank = {
     very_low: 0,
     low: 1,
@@ -204,7 +222,49 @@ export default function VarianceTable() {
     very_high: 4,
   }
 
-  // Filtering and sorting
+  // Given a formatted row (which has .raw with subkeys), pick the chosen sub object and return normalized structure used by filtering/sorting/rendering
+  function pickSubView(row, subMode) {
+    const key = SUBKEY_MAP[subMode] ?? "All"
+    const obj = row.raw?.[key] ?? {}
+
+    const high = obj?.high ?? null
+    const low = obj?.low ?? null
+    const avg = obj?.average ?? null
+
+    return {
+      consumer: row.consumer,
+      serviceNo: row.serviceNo,
+      average: avg?.consumption ?? null,
+      peak: {
+        hour: normalizeHour(high?.hour ?? null) ?? (high?.hour ?? null),
+        value: high?.avg_consumption ?? null,
+        percentValue:
+          high?.percent_increase_from_avg != null
+            ? high.percent_increase_from_avg
+            : null,
+        percent:
+          high?.percent_increase_from_avg != null
+            ? `${high.percent_increase_from_avg.toFixed(2)}%`
+            : null,
+        category: (high?.category ?? "-").toString().toLowerCase(),
+      },
+      low: {
+        hour: normalizeHour(low?.hour ?? null) ?? (low?.hour ?? null),
+        value: low?.avg_consumption ?? null,
+        percentValue:
+          low?.percent_decrease_from_avg != null
+            ? low.percent_decrease_from_avg
+            : null,
+        percent:
+          low?.percent_decrease_from_avg != null
+            ? `-${low.percent_decrease_from_avg.toFixed(2)}%`
+            : null,
+        category: (low?.category ?? "-").toString().toLowerCase(),
+      },
+    }
+  }
+
+  // Filtering and sorting. We pick the selected subview for each row while processing.
   const filteredAndSortedData = useMemo(() => {
     if (!Array.isArray(data)) return []
 
@@ -222,7 +282,11 @@ export default function VarianceTable() {
 
     const categorySel = categoryFilter === "any" ? null : categoryFilter
 
-    const passesFilters = (row) => {
+    const selectedSub = SUBKEY_MAP[subViewMode] ?? "All"
+
+    const passesFilters = (rawRow) => {
+      const row = pickSubView(rawRow, selectedSub)
+
       if (view === "Average") {
         if (avgMinN !== null) {
           if (row.average === null || row.average === undefined || Number(row.average) < avgMinN) return false
@@ -271,7 +335,7 @@ export default function VarianceTable() {
       }
     }
 
-    let result = data.filter(passesFilters)
+    let result = data.filter(passesFilters).map((r) => pickSubView(r, selectedSub))
 
     // Sorting
     if (sortOrder && sortMetric) {
@@ -280,7 +344,6 @@ export default function VarianceTable() {
         let aVal, bVal
 
         if (view === "Average") {
-          // only metric "average" makes sense
           aVal = toNumberSafe(a.average)
           bVal = toNumberSafe(b.average)
         } else {
@@ -335,6 +398,7 @@ export default function VarianceTable() {
     categoryFilter,
     sortMetric,
     sortOrder,
+    subViewMode,
   ])
 
   if (loading) {

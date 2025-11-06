@@ -4,8 +4,9 @@ import TODPie from "./TODpie"
 
 export default function TODInsights() {
   const [viewMode, setViewMode] = useState(() => {
-    // Default to "table" if nothing in localStorage
+    // Read saved mode from localStorage (if available)
     const saved = localStorage.getItem("todViewMode")
+    // Default to "table" if nothing is saved or invalid
     return saved === "chart" ? "chart" : "table"
   })
 

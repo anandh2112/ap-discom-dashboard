@@ -63,24 +63,24 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
         <Loadshift scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
 
-      {/* Peak Demand & TOD Section */}
-      <div className="mt-8 flex gap-4">
-        <div className="flex-6">
-          {/* <AvgPeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} /> */}
-          <PeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
-        </div>
-        <div className="flex-4">
-          <ConsumerTOD scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
-        </div>
-      </div>
-
       {/* Consumer Heatmap Section */}
       <div className="mt-8">
         <ConsumerHeatmap scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
 
+      {/* Peak Demand & TOD Section */}
+      <div className="mt-8 flex gap-4 w-full">
+        <div className="flex-4">
+          <ConsumerTOD scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+        </div>
+        <div className="flex-6">
+          {/* <AvgPeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} /> */}
+          <PeakDemand scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+        </div>
+      </div>
+
       {/* Consumption */}
-      <div className="mt-8">
+      <div className="mt-4">
         <Consumption scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
       </div>
     </div>

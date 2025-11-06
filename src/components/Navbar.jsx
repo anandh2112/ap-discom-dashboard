@@ -2,27 +2,44 @@ import { useState } from "react"
 import { useLocation } from "react-router-dom"
 import { User } from "lucide-react"
 
-export default function Navbar({ onHelp, viewMode, setViewMode, selectedDate, setSelectedDate }) {
+export default function Navbar({
+  onHelp,
+  viewMode,
+  setViewMode,
+  subViewMode,
+  setSubViewMode,
+  selectedDate,
+  setSelectedDate,
+}) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
 
-  // Show controls only on ConsumerDetail page
   const isConsumerDetail = location.pathname.includes("/consumer/")
+  const isVarianceInsights = location.pathname.includes("/insights/variance")
 
   const MIN_DATE = "2025-02-22"
   const MAX_DATE = "2025-10-08"
+
+  // Toggle groups based on page
+  const mainToggles = isConsumerDetail
+    ? ["Day", "Week", "Month"]
+    : isVarianceInsights
+    ? ["Month", "Year", "All"]
+    : []
+
+  // Added "All" to sub toggles
+  const subToggles = isVarianceInsights ? ["M-F", "Sat", "Sun", "All"] : []
 
   return (
     <div className="flex justify-end items-center bg-white shadow px-4 sm:px-6 py-2 border-b border-gray-300 min-h-[50px]">
       {/* Left Section: Page Controls */}
       <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
-        {/* Keep space reserved even when controls are hidden */}
         <div className="flex items-center gap-2 sm:gap-4 min-h-[36px]">
-          {isConsumerDetail ? (
+          {isConsumerDetail || isVarianceInsights ? (
             <>
-              {/* Day/Week/Month Toggle */}
+              {/* Main Toggles */}
               <div className="flex items-center gap-1 sm:gap-2">
-                {["Day", "Week", "Month"].map((mode) => (
+                {mainToggles.map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
@@ -37,6 +54,25 @@ export default function Navbar({ onHelp, viewMode, setViewMode, selectedDate, se
                 ))}
               </div>
 
+              {/* Sub Toggles (only for Variance Insights) */}
+              {isVarianceInsights && (
+                <div className="flex items-center gap-1 sm:gap-2 ml-3">
+                  {subToggles.map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => setSubViewMode(sub)}
+                      className={`px-2 sm:px-3 py-1 rounded-lg border text-xs sm:text-sm font-medium transition hover:cursor-pointer ${
+                        subViewMode === sub
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-emerald-50"
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Date Picker */}
               <input
                 type="date"
@@ -49,11 +85,10 @@ export default function Navbar({ onHelp, viewMode, setViewMode, selectedDate, se
                 }}
                 min={MIN_DATE}
                 max={MAX_DATE}
-                className="border border-gray-300 bg-white rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm focus:ring-1 focus:outline-none hover:cursor-pointer"
+                className="border border-gray-300 bg-white rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm focus:ring-1 focus:outline-none hover:cursor-pointer ml-3"
               />
             </>
           ) : (
-            // Placeholder to keep height consistent
             <div className="h-[36px]" />
           )}
         </div>

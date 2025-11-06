@@ -165,7 +165,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
     const chartColor = notApplicable ? '#aed5ff' : '#007bff'
 
     return {
-      chart: { type: 'area', height: 350 },
+      chart: { type: 'area', height: 250 },
       title: { text: null },
       xAxis: {
         categories, // always use categories for consistent X-axis
@@ -214,7 +214,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   }
 
   return (
-    <div className="relative bg-white p-4 rounded-lg shadow-md overflow-hidden">
+    <div className="relative bg-white p-3 rounded-lg shadow-md overflow-hidden">
       {isOffline && (
         <div className="absolute top-0 left-0 right-0 bg-yellow-200 text-yellow-900 text-center py-1 text-sm z-10">
           You are currently offline. Showing cached data if available.

@@ -11,7 +11,10 @@ import HelpModal from "./components/Helpmodal"
 
 export default function App() {
   const [showHelp, setShowHelp] = useState(false)
+
+  // View toggles
   const [viewMode, setViewMode] = useState("Day")
+  const [subViewMode, setSubViewMode] = useState("M-F") // For variance insights
 
   const MAX_DATE = "2025-10-08"
   const MIN_DATE = "2025-02-22"
@@ -35,6 +38,8 @@ export default function App() {
           onHelp={() => setShowHelp(true)}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          subViewMode={subViewMode}
+          setSubViewMode={setSubViewMode}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
         />
@@ -52,7 +57,16 @@ export default function App() {
                 />
               }
             />
-            <Route path="/insights/variance" element={<VarianceInsights />} />
+            <Route
+              path="/insights/variance"
+              element={
+                <VarianceInsights
+                  viewMode={viewMode}
+                  subViewMode={subViewMode}
+                  selectedDate={selectedDate}
+                />
+              }
+            />
             <Route path="/insights/tod" element={<TODInsights />} />
           </Routes>
         </div>

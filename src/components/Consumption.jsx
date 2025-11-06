@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
@@ -7,110 +7,187 @@ if (Highcharts?.Chart?.prototype?.credits) {
   Highcharts.Chart.prototype.credits = function () {};
 }
 
-export default function Consumption() {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // default current month (0 = Jan)
+export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-05' }) {
+  const [yearlyData, setYearlyData] = useState({});
+  const [weeklyData, setWeeklyData] = useState({});
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [loadingYear, setLoadingYear] = useState(true);
+  const [loadingWeek, setLoadingWeek] = useState(false);
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Base color for all months (e.g., blue tone)
-  const baseColor = '#1f77b4';
+  // Stack colors
+  const PEAK_COLOR = '#F77B72';
+  const NORMAL_COLOR = '#FFB74C';
+  const OFFPEAK_COLOR = '#81C784';
 
-  // Dummy year-wise consumption data
-  const yearData = useMemo(() => months.map(() => Math.floor(Math.random() * 1000) + 200), []);
+  const year = useMemo(() => new Date(selectedDate).getFullYear(), [selectedDate]);
 
-  // Function to get dummy week-wise data based on month
-  const getWeeklyData = (monthIndex) => {
-    const weeks = Math.ceil(28 + Math.random() * 4); // random number of days 28–31
-    const numWeeks = Math.ceil(weeks / 7);
-    return Array.from({ length: numWeeks }, () => Math.floor(Math.random() * 200) + 50);
-  };
+  // Helper to round to 2 decimals
+  const round2 = (num) => (isNaN(num) ? 0 : parseFloat(num.toFixed(2)));
 
-  const weeklyData = useMemo(() => getWeeklyData(selectedMonth), [selectedMonth]);
+  // Fetch Yearly Data
+  useEffect(() => {
+    const fetchYearly = async () => {
+      setLoadingYear(true);
+      try {
+        const res = await fetch(
+          `https://ee.elementsenergies.com/api/fetchConsumerWiseYearWiseMonthlyTariffBasedConsumption?scno=${scno}&year=${year}`
+        );
+        const data = await res.json();
+        setYearlyData(data);
+      } catch (err) {
+        console.error('Error fetching yearly data:', err);
+      } finally {
+        setLoadingYear(false);
+      }
+    };
+    fetchYearly();
+  }, [scno, year]);
 
-  // Determine brightness relative to median week (3rd highest)
-  const weeklyColors = useMemo(() => {
-    const sorted = [...weeklyData].sort((a, b) => b - a); // descending
-    const medianVal = sorted[Math.min(2, sorted.length - 1)]; // 3rd highest or last available
+  // Fetch Weekly Data for selected month
+  useEffect(() => {
+    const fetchWeekly = async () => {
+      if (!months[selectedMonth]) return;
+      setLoadingWeek(true);
+      try {
+        const monthNum = String(selectedMonth + 1).padStart(2, '0');
+        const res = await fetch(
+          `https://ee.elementsenergies.com/api/fetchConsumerWiseMonthWiseWeeklyTariffBasedConsumption?scno=${scno}&month=${year}-${monthNum}`
+        );
+        const data = await res.json();
+        setWeeklyData(data);
+      } catch (err) {
+        console.error('Error fetching weekly data:', err);
+      } finally {
+        setLoadingWeek(false);
+      }
+    };
+    fetchWeekly();
+  }, [selectedMonth, scno, year]);
 
-    return weeklyData.map(val => {
-      // Positive => darker, Negative => lighter relative to median
-      const diffRatio = (val - medianVal) / medianVal;
-      const brightness = diffRatio > 0 ? -0.3 * diffRatio : 0.3 * Math.abs(diffRatio);
-      return Highcharts.color(baseColor).brighten(brightness).get();
-    });
-  }, [weeklyData]);
+  // Yearly chart options
+  const yearOptions = useMemo(() => {
+    const categories = months;
+    const peaks = categories.map((m) => round2(yearlyData[m]?.['Peak'] || 0));
+    const normals = categories.map((m) => round2(yearlyData[m]?.['Normal'] || 0));
+    const offpeaks = categories.map((m) => round2(yearlyData[m]?.['Off-Peak'] || 0));
 
-  // Yearly Chart Config (single consistent color)
-  const yearOptions = {
-    chart: {
-      type: 'column',
-      height: 280,
-      backgroundColor: '#fff',
-    },
-    title: { text: null },
-    xAxis: { categories: months, title: { text: null } },
-    yAxis: { title: { text: 'Consumption (kWh)' } },
-    tooltip: { pointFormat: 'Consumption: <b>{point.y} kWh</b>' },
-    plotOptions: {
-      column: {
-        borderRadius: 4,
-        cursor: 'pointer',
-        point: {
-          events: {
-            click: function () {
-              setSelectedMonth(this.x);
+    return {
+      chart: { type: 'column', height: 250, backgroundColor: '#fff' },
+      title: { text: null },
+      xAxis: { categories, title: { text: null } },
+      yAxis: {
+        min: 0,
+        title: { text: 'Consumption (kWh)' },
+        stackLabels: { enabled: false },
+      },
+      tooltip: {
+        shared: true,
+        formatter: function () {
+          const monthName = months[this.points[0].point.x];
+          let total = 0;
+          this.points.forEach((p) => (total += p.y));
+          return `
+            <b>${monthName}</b><br/>
+            <span style="color:${PEAK_COLOR}">●</span> Peak: <b>${round2(this.points[0].y)} kWh</b><br/>
+            <span style="color:${NORMAL_COLOR}">●</span> Normal: <b>${round2(this.points[1].y)} kWh</b><br/>
+            <span style="color:${OFFPEAK_COLOR}">●</span> Off-Peak: <b>${round2(this.points[2].y)} kWh</b><br/>
+            <hr style="margin:4px 0"/>Total: <b>${round2(total)} kWh</b>
+          `;
+        },
+        useHTML: true,
+      },
+      plotOptions: {
+        column: {
+          stacking: 'normal',
+          borderRadius: 2,
+          cursor: 'pointer',
+          point: {
+            events: {
+              click: function () {
+                setSelectedMonth(this.x);
+              },
             },
           },
         },
       },
-    },
-    credits: { enabled: false },
-    series: [
-      {
-        name: 'Consumption',
-        data: yearData.map((y) => ({ y, color: baseColor })),
-      },
-    ],
-    legend: { enabled: false },
-  };
+      series: [
+        { name: 'Peak', data: peaks, color: PEAK_COLOR },
+        { name: 'Normal', data: normals, color: NORMAL_COLOR },
+        { name: 'Off-Peak', data: offpeaks, color: OFFPEAK_COLOR },
+      ],
+      credits: { enabled: false },
+      legend: { align: 'center', verticalAlign: 'bottom' },
+    };
+  }, [yearlyData]);
 
-  // Weekly Chart Config (shades of same base color)
-  const weekOptions = {
-    chart: { type: 'column', height: 280, backgroundColor: '#fff' },
-    title: { text: null },
-    xAxis: { categories: weeklyData.map((_, i) => `Week ${i + 1}`), title: { text: null } },
-    yAxis: { title: { text: 'Consumption (kWh)' } },
-    tooltip: { pointFormat: 'Consumption: <b>{point.y} kWh</b>' },
-    plotOptions: {
-      column: { borderRadius: 4 },
-      series: { colorByPoint: true },
-    },
-    credits: { enabled: false },
-    series: [
-      {
-        name: 'Weekly Consumption',
-        data: weeklyData.map((y, i) => ({ y, color: weeklyColors[i] })),
+  // Weekly chart options
+  const weekOptions = useMemo(() => {
+    const weekKeys = Object.keys(weeklyData || {});
+    const peaks = weekKeys.map((w) => round2(weeklyData[w]?.['Peak'] || 0));
+    const normals = weekKeys.map((w) => round2(weeklyData[w]?.['Normal'] || 0));
+    const offpeaks = weekKeys.map((w) => round2(weeklyData[w]?.['Off-Peak'] || 0));
+
+    return {
+      chart: { type: 'column', height: 250, backgroundColor: '#fff' },
+      title: { text: null },
+      xAxis: { categories: weekKeys, title: { text: null } },
+      yAxis: {
+        min: 0,
+        title: { text: 'Consumption (kWh)' },
+        stackLabels: { enabled: false },
       },
-    ],
-    legend: { enabled: false },
-  };
+      tooltip: {
+        shared: true,
+        formatter: function () {
+          const weekLabel = weekKeys[this.points[0].point.x];
+          let total = 0;
+          this.points.forEach((p) => (total += p.y));
+          return `
+            <b>${months[selectedMonth]} - ${weekLabel}</b><br/>
+            <span style="color:${PEAK_COLOR}">●</span> Peak: <b>${round2(this.points[0].y)} kWh</b><br/>
+            <span style="color:${NORMAL_COLOR}">●</span> Normal: <b>${round2(this.points[1].y)} kWh</b><br/>
+            <span style="color:${OFFPEAK_COLOR}">●</span> Off-Peak: <b>${round2(this.points[2].y)} kWh</b><br/>
+            <hr style="margin:4px 0"/>Total: <b>${round2(total)} kWh</b>
+          `;
+        },
+        useHTML: true,
+      },
+      plotOptions: {
+        column: { stacking: 'normal', borderRadius: 2 },
+      },
+      series: [
+        { name: 'Peak', data: peaks, color: PEAK_COLOR },
+        { name: 'Normal', data: normals, color: NORMAL_COLOR },
+        { name: 'Off-Peak', data: offpeaks, color: OFFPEAK_COLOR },
+      ],
+      credits: { enabled: false },
+      legend: { align: 'center', verticalAlign: 'bottom' },
+    };
+  }, [weeklyData, selectedMonth]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg">
+    <div className="grid grid-cols-1 md:flex gap-4 rounded-lg">
       {/* Yearly Chart */}
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white rounded-lg shadow-md p-3 md:flex-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">
-          Yearly Consumption
+          {loadingYear ? 'Loading Yearly Consumption...' : 'Yearly Consumption'}
         </h2>
-        <HighchartsReact highcharts={Highcharts} options={yearOptions} />
+        {!loadingYear && <HighchartsReact highcharts={Highcharts} options={yearOptions} />}
       </div>
 
       {/* Weekly Chart */}
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white rounded-lg shadow-md p-3 md:flex-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">
-          {months[selectedMonth]} - Weekly Consumption
+          {loadingWeek
+            ? `Loading ${months[selectedMonth]} Data...`
+            : `${months[selectedMonth]} - Weekly Consumption`}
         </h2>
-        <HighchartsReact highcharts={Highcharts} options={weekOptions} />
+        {!loadingWeek && Object.keys(weeklyData).length > 0 && (
+          <HighchartsReact highcharts={Highcharts} options={weekOptions} />
+        )}
       </div>
     </div>
   );
-} 
+}
