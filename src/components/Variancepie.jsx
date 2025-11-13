@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
-export default function VariancePie() {
+export default function VariancePie({ viewMode, subViewMode, selectedDate }) {
   const [peakData, setPeakData] = useState([]);
   const [lowData, setLowData] = useState([]);
   const [tableData, setTableData] = useState(null);
@@ -10,15 +10,51 @@ export default function VariancePie() {
   const [error, setError] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  const CACHE_KEY = "varianceChartData";
+  // Cache keys based on viewMode and selectedDate
+  const getCacheKey = (type) => `variance${type}_${viewMode}_${selectedDate || 'all'}`;
   const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
-  const mapDataWithLabels = (dataObj, labels) => {
+  const mapDataWithLabels = (dataObj) => {
     const keys = Object.keys(dataObj);
+    const labels = ["Very Low", "Low", "Medium", "High", "Very High"];
     return keys.map((key, index) => ({
       name: labels[index] || key,
       y: dataObj[key],
     }));
+  };
+
+  const getSubViewModeKey = () => {
+    switch (subViewMode) {
+      case 'M-F': return 'Mon-Fri';
+      case 'Sat': return 'Sat';
+      case 'Sun': return 'Sun';
+      default: return 'All';
+    }
+  };
+
+  const getEndpoints = () => {
+    const baseURL = "https://ee.elementsenergies.com/api";
+    
+    switch (viewMode) {
+      case 'Month':
+        return {
+          chart: `${baseURL}/fetchMonthlyAllHighLowAvgChartMFSTSD?month=${selectedDate}`,
+          table: `${baseURL}/fetchMonthlyAllHighLowAvgChartTableMFSTSD?month=${selectedDate}`
+        };
+      case 'Year':
+        // Extract year from selectedDate (e.g., "2025" from "2025" or "2025-09")
+        const year = selectedDate ? selectedDate.split('-')[0] : new Date().getFullYear();
+        return {
+          chart: `${baseURL}/fetchYearlyAllHighLowAvgChartMFSTSD?year=${year}`,
+          table: `${baseURL}/fetchYearlyAllHighLowAvgChartTableMFSTSD?year=${year}`
+        };
+      case 'All':
+      default:
+        return {
+          chart: `${baseURL}/fetchAllHighLowAvgChartMFSTSD`,
+          table: `${baseURL}/fetchAllHighLowAvgChartTableMFSTSD`
+        };
+    }
   };
 
   useEffect(() => {
@@ -36,24 +72,30 @@ export default function VariancePie() {
   useEffect(() => {
     const fetchVarianceData = async () => {
       try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { timestamp, data } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setPeakData(data.peakData);
-            setLowData(data.lowData);
-            setTableData(data.tableData);
+        const chartCacheKey = getCacheKey('Chart');
+        const tableCacheKey = getCacheKey('Table');
+        
+        const cachedChart = localStorage.getItem(chartCacheKey);
+        const cachedTable = localStorage.getItem(tableCacheKey);
+
+        // Check if we have valid cached data
+        if (cachedChart && cachedTable) {
+          const { timestamp: chartTimestamp, data: chartData } = JSON.parse(cachedChart);
+          const { timestamp: tableTimestamp, data: tableData } = JSON.parse(cachedTable);
+          
+          if (Date.now() - chartTimestamp < CACHE_DURATION && 
+              Date.now() - tableTimestamp < CACHE_DURATION) {
+            updateDataFromCache(chartData, tableData);
             setLoading(false);
             return;
           }
         }
 
         if (!navigator.onLine) {
-          if (cached) {
-            const { data } = JSON.parse(cached);
-            setPeakData(data.peakData);
-            setLowData(data.lowData);
-            setTableData(data.tableData);
+          if (cachedChart && cachedTable) {
+            const { data: chartData } = JSON.parse(cachedChart);
+            const { data: tableData } = JSON.parse(cachedTable);
+            updateDataFromCache(chartData, tableData);
             setLoading(false);
             return;
           } else {
@@ -61,48 +103,103 @@ export default function VariancePie() {
           }
         }
 
+        const endpoints = getEndpoints();
+        
         // Fetch chart data
-        const chartRes = await fetch(
-          "https://ee.elementsenergies.com/api/fetchAllHighLowAvgChart"
-        );
+        const chartRes = await fetch(endpoints.chart);
+        if (!chartRes.ok) {
+          throw new Error(`Failed to fetch chart data: ${chartRes.status}`);
+        }
         const chartJson = await chartRes.json();
 
-        const increaseData = chartJson.percent_increase_from_avg || {};
-        const decreaseData = chartJson.percent_decrease_from_avg || {};
-
-        const labels = ["Very Low", "Low", "Medium", "High", "Very High"];
-
-        const peak = mapDataWithLabels(increaseData, labels);
-        const low = mapDataWithLabels(decreaseData, labels);
-
-        setPeakData(peak);
-        setLowData(low);
-
         // Fetch table data
-        const tableRes = await fetch(
-          "https://ee.elementsenergies.com/api/fetchAllHighLowAvgChartTable"
-        );
+        const tableRes = await fetch(endpoints.table);
+        if (!tableRes.ok) {
+          throw new Error(`Failed to fetch table data: ${tableRes.status}`);
+        }
         const tableJson = await tableRes.json();
-        setTableData(tableJson);
 
         // Cache both
         localStorage.setItem(
-          CACHE_KEY,
+          chartCacheKey,
           JSON.stringify({
             timestamp: Date.now(),
-            data: { peakData: peak, lowData: low, tableData: tableJson },
+            data: chartJson,
           })
         );
 
+        localStorage.setItem(
+          tableCacheKey,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data: tableJson,
+          })
+        );
+
+        updateDataFromResponse(chartJson, tableJson);
         setLoading(false);
       } catch (err) {
-        setError("Failed to load chart data");
+        console.error('Error fetching variance data:', err);
+        setError(`Failed to load chart data: ${err.message}`);
         setLoading(false);
       }
     };
 
+    const updateDataFromCache = (chartData, tableData) => {
+      const subViewKey = getSubViewModeKey();
+      const chartSubData = chartData[subViewKey] || chartData;
+      const tableSubData = tableData[subViewKey] || tableData;
+
+      const peak = mapDataWithLabels(chartSubData.percent_increase_from_avg || {});
+      const low = mapDataWithLabels(chartSubData.percent_decrease_from_avg || {});
+
+      setPeakData(peak);
+      setLowData(low);
+      setTableData(tableSubData);
+    };
+
+    const updateDataFromResponse = (chartJson, tableJson) => {
+      const subViewKey = getSubViewModeKey();
+      const chartSubData = chartJson[subViewKey] || chartJson;
+      const tableSubData = tableJson[subViewKey] || tableJson;
+
+      const peak = mapDataWithLabels(chartSubData.percent_increase_from_avg || {});
+      const low = mapDataWithLabels(chartSubData.percent_decrease_from_avg || {});
+
+      setPeakData(peak);
+      setLowData(low);
+      setTableData(tableSubData);
+    };
+
     fetchVarianceData();
-  }, []);
+  }, [viewMode, selectedDate]); // Only refetch when viewMode or selectedDate changes
+
+  // Update data when subViewMode changes (using cached data)
+  useEffect(() => {
+    if (!loading && !error) {
+      const chartCacheKey = getCacheKey('Chart');
+      const tableCacheKey = getCacheKey('Table');
+      
+      const cachedChart = localStorage.getItem(chartCacheKey);
+      const cachedTable = localStorage.getItem(tableCacheKey);
+
+      if (cachedChart && cachedTable) {
+        const { data: chartData } = JSON.parse(cachedChart);
+        const { data: tableData } = JSON.parse(cachedTable);
+
+        const subViewKey = getSubViewModeKey();
+        const chartSubData = chartData[subViewKey] || chartData;
+        const tableSubData = tableData[subViewKey] || tableData;
+
+        const peak = mapDataWithLabels(chartSubData.percent_increase_from_avg || {});
+        const low = mapDataWithLabels(chartSubData.percent_decrease_from_avg || {});
+
+        setPeakData(peak);
+        setLowData(low);
+        setTableData(tableSubData);
+      }
+    }
+  }, [subViewMode]); // Only update display when subViewMode changes
 
   const createOptions = (title, data) => ({
     chart: { type: "pie" },
