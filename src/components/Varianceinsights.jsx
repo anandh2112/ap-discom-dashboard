@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import VarianceTable from "./Variancetable"
-import VariancePie from "./Variancepie"
+import VarianceChart from "./Varianceinsightschart"
 
 export default function VarianceInsights({ viewMode, subViewMode, selectedDate }) {
   const [displayMode, setDisplayMode] = useState(() => {
@@ -47,7 +47,7 @@ export default function VarianceInsights({ viewMode, subViewMode, selectedDate }
             selectedDate={selectedDate}
           />
         ) : (
-          <VariancePie
+          <VarianceChart
             viewMode={viewMode}
             subViewMode={subViewMode}
             selectedDate={selectedDate}

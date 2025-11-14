@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, useLocation } from "react-router-dom"
 import Sidebar from "./components/Sidebar"
 import Navbar from "./components/Navbar"
 import Overview from "./components/Overview"
@@ -10,24 +10,36 @@ import { useState, useEffect } from "react"
 import HelpModal from "./components/Helpmodal"
 
 export default function App() {
-  const [showHelp, setShowHelp] = useState(false)
+  const location = useLocation();
+
+  const [showHelp, setShowHelp] = useState(false);
 
   // View toggles
-  const [viewMode, setViewMode] = useState("Day")
-  const [subViewMode, setSubViewMode] = useState("M-F") // For variance insights
+  const [viewMode, setViewMode] = useState("Day");
+  const [subViewMode, setSubViewMode] = useState("M-F"); // For variance insights
 
-  const MAX_DATE = "2025-10-08"
-  const MIN_DATE = "2025-02-22"
+  const MAX_DATE = "2025-10-08";
+  const MIN_DATE = "2025-02-22";
+
   const [selectedDate, setSelectedDate] = useState(() => {
-    const saved = localStorage.getItem("consumer_detail_date")
-    return saved ? saved : MAX_DATE
-  })
+    const saved = localStorage.getItem("consumer_detail_date");
+    return saved ? saved : MAX_DATE;
+  });
 
   useEffect(() => {
     if (selectedDate >= MIN_DATE && selectedDate <= MAX_DATE) {
-      localStorage.setItem("consumer_detail_date", selectedDate)
+      localStorage.setItem("consumer_detail_date", selectedDate);
     }
-  }, [selectedDate])
+  }, [selectedDate]);
+
+  // 🔥 Ensure default viewMode = "Month" only when inside VarianceInsights
+  useEffect(() => {
+    if (location.pathname === "/insights/variance") {
+      if (viewMode === "Day") {
+        setViewMode("Month");
+      }
+    }
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-slate-100">
@@ -74,5 +86,5 @@ export default function App() {
 
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </div>
-  )
+  );
 }

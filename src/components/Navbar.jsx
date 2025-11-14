@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useLocation } from "react-router-dom"
-import { User } from "lucide-react"
+import { User, ArrowRight } from "lucide-react"
 
 export default function Navbar({
   onHelp,
@@ -12,6 +12,7 @@ export default function Navbar({
   setSelectedDate,
 }) {
   const [open, setOpen] = useState(false)
+  const [tempDate, setTempDate] = useState(selectedDate) // temporary date for picker
   const location = useLocation()
 
   const isConsumerDetail = location.pathname.includes("/consumer/")
@@ -27,7 +28,6 @@ export default function Navbar({
     ? ["Month", "Year", "All"]
     : []
 
-  // Added "All" to sub toggles
   const subToggles = isVarianceInsights ? ["M-F", "Sat", "Sun", "All"] : []
 
   return (
@@ -73,20 +73,28 @@ export default function Navbar({
                 </div>
               )}
 
-              {/* Date Picker */}
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  const newDate = e.target.value
-                  if (newDate <= MAX_DATE && newDate >= MIN_DATE) {
-                    setSelectedDate(newDate)
-                  }
-                }}
-                min={MIN_DATE}
-                max={MAX_DATE}
-                className="border border-gray-300 bg-white rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm focus:ring-1 focus:outline-none hover:cursor-pointer ml-3"
-              />
+              {/* Date Picker + Apply Button */}
+              <div className="flex items-center ml-3 gap-2">
+                <input
+                  type="date"
+                  value={tempDate}
+                  onChange={(e) => {
+                    const newDate = e.target.value
+                    if (newDate <= MAX_DATE && newDate >= MIN_DATE) {
+                      setTempDate(newDate)
+                    }
+                  }}
+                  min={MIN_DATE}
+                  max={MAX_DATE}
+                  className="border border-gray-300 bg-white rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm focus:ring-1 focus:outline-none hover:cursor-pointer"
+                />
+                <button
+                  onClick={() => setSelectedDate(tempDate)}
+                  className="bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition"
+                >
+                  <ArrowRight size={16} />
+                </button>
+              </div>
             </>
           ) : (
             <div className="h-[36px]" />
