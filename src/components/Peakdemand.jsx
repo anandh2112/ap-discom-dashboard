@@ -11,15 +11,24 @@ const CACHE_PREFIX = 'peakDemandCache'
 const CACHE_TTL = 12 * 60 * 60 * 1000 // 12 hours in ms
 
 export default function PeakDemand({ scno, selectedDate, viewMode }) {
-  const [localViewMode, setLocalViewMode] = useState(viewMode)
+  // YEAR view enabled by default
+  const [localViewMode, setLocalViewMode] = useState('Year')
   const lastNonYearMode = useRef(viewMode)
+  const firstLoad = useRef(true)
+
   const [data, setData] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
+  // viewMode sync but skip on first load
   useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false
+      return
+    }
+
     setLocalViewMode(viewMode)
     if (viewMode !== 'Year') lastNonYearMode.current = viewMode
   }, [viewMode])
@@ -42,7 +51,8 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
   const formattedMonth = `${year}-${month}`
   const formattedYear = `${year}`
 
-  const getCacheKey = (mode, scno, dateKey) => `${CACHE_PREFIX}_${mode}_${scno}_${dateKey}`
+  const getCacheKey = (mode, scno, dateKey) =>
+    `${CACHE_PREFIX}_${mode}_${scno}_${dateKey}`
 
   const saveCache = (key, payload) => {
     const cacheData = {
@@ -115,7 +125,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
             (day) => dailyData[`${formattedMonth}-${String(day).padStart(2, '0')}`]
           )
 
-          fetchedCategories = days.map(String) // convert to string for consistent X-axis
+          fetchedCategories = days.map(String)
           fetchedData = values
         } else if (localViewMode === 'Year') {
           const res = await fetch(
@@ -125,9 +135,18 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
           const monthlyData = json?.MonthlyHighestVA || {}
 
           const monthsMap = {
-            '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May',
-            '06': 'Jun', '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct',
-            '11': 'Nov', '12': 'Dec',
+            '01': 'Jan',
+            '02': 'Feb',
+            '03': 'Mar',
+            '04': 'Apr',
+            '05': 'May',
+            '06': 'Jun',
+            '07': 'Jul',
+            '08': 'Aug',
+            '09': 'Sep',
+            '10': 'Oct',
+            '11': 'Nov',
+            '12': 'Dec',
           }
 
           const months = Object.keys(monthlyData)
@@ -168,7 +187,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       chart: { type: 'area', height: 250 },
       title: { text: null },
       xAxis: {
-        categories, // always use categories for consistent X-axis
+        categories,
         lineColor: '#00000000',
         tickLength: 0,
         gridLineWidth: 0,
@@ -183,7 +202,7 @@ export default function PeakDemand({ scno, selectedDate, viewMode }) {
       series: [
         {
           name: 'Peak Demand',
-          data: data.map((v) => v || 0), // just values, categories handle X-axis
+          data: data.map((v) => v || 0),
           color: chartColor,
           fillColor: chartColor + '33',
           lineWidth: 2,

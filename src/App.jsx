@@ -26,6 +26,9 @@ export default function App() {
     return saved ? saved : MAX_DATE;
   });
 
+  // Search for consumer list
+  const [searchQuery, setSearchQuery] = useState("");
+
   useEffect(() => {
     if (selectedDate >= MIN_DATE && selectedDate <= MAX_DATE) {
       localStorage.setItem("consumer_detail_date", selectedDate);
@@ -54,12 +57,17 @@ export default function App() {
           setSubViewMode={setSubViewMode}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
         />
 
         <div className="flex-1 overflow-y-auto p-2">
           <Routes>
             <Route path="/" element={<Overview />} />
-            <Route path="/consumers" element={<ConsumerList />} />
+            <Route
+              path="/consumers"
+              element={<ConsumerList searchQuery={searchQuery} />}
+            />
             <Route
               path="/consumer/:id"
               element={

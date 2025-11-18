@@ -10,7 +10,6 @@ if (Highcharts?.Chart?.prototype?.credits) {
 export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-05' }) {
   const [yearlyData, setYearlyData] = useState({});
   const [weeklyData, setWeeklyData] = useState({});
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [loadingYear, setLoadingYear] = useState(true);
   const [loadingWeek, setLoadingWeek] = useState(false);
 
@@ -22,6 +21,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
   const OFFPEAK_COLOR = '#81C784';
 
   const year = useMemo(() => new Date(selectedDate).getFullYear(), [selectedDate]);
+  const monthIndex = useMemo(() => new Date(selectedDate).getMonth(), [selectedDate]); // 0-based month
 
   // Helper to round to 2 decimals
   const round2 = (num) => (isNaN(num) ? 0 : parseFloat(num.toFixed(2)));
@@ -45,13 +45,13 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
     fetchYearly();
   }, [scno, year]);
 
-  // Fetch Weekly Data for selected month
+  // Fetch Weekly Data for the month from selectedDate
   useEffect(() => {
     const fetchWeekly = async () => {
-      if (!months[selectedMonth]) return;
+      if (!months[monthIndex]) return;
       setLoadingWeek(true);
       try {
-        const monthNum = String(selectedMonth + 1).padStart(2, '0');
+        const monthNum = String(monthIndex + 1).padStart(2, '0');
         const res = await fetch(
           `https://ee.elementsenergies.com/api/fetchConsumerWiseMonthWiseWeeklyTariffBasedConsumption?scno=${scno}&month=${year}-${monthNum}`
         );
@@ -64,7 +64,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       }
     };
     fetchWeekly();
-  }, [selectedMonth, scno, year]);
+  }, [monthIndex, scno, year]);
 
   // Yearly chart options
   const yearOptions = useMemo(() => {
@@ -79,7 +79,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       xAxis: { categories, title: { text: null } },
       yAxis: {
         min: 0,
-        title: { text: 'Consumption (kWh)' },
+        title: { text: 'Consumption (MWh)' },
         stackLabels: { enabled: false },
       },
       tooltip: {
@@ -90,10 +90,10 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
           this.points.forEach((p) => (total += p.y));
           return `
             <b>${monthName}</b><br/>
-            <span style="color:${PEAK_COLOR}">●</span> Peak: <b>${round2(this.points[0].y)} kWh</b><br/>
-            <span style="color:${NORMAL_COLOR}">●</span> Normal: <b>${round2(this.points[1].y)} kWh</b><br/>
-            <span style="color:${OFFPEAK_COLOR}">●</span> Off-Peak: <b>${round2(this.points[2].y)} kWh</b><br/>
-            <hr style="margin:4px 0"/>Total: <b>${round2(total)} kWh</b>
+            <span style="color:${PEAK_COLOR}">●</span> Peak: <b>${round2(this.points[0].y)} MWh</b><br/>
+            <span style="color:${NORMAL_COLOR}">●</span> Normal: <b>${round2(this.points[1].y)} MWh</b><br/>
+            <span style="color:${OFFPEAK_COLOR}">●</span> Off-Peak: <b>${round2(this.points[2].y)} MWh</b><br/>
+            <hr style="margin:4px 0"/>Total: <b>${round2(total)} MWh</b>
           `;
         },
         useHTML: true,
@@ -102,14 +102,6 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
         column: {
           stacking: 'normal',
           borderRadius: 2,
-          cursor: 'pointer',
-          point: {
-            events: {
-              click: function () {
-                setSelectedMonth(this.x);
-              },
-            },
-          },
         },
       },
       series: [
@@ -145,7 +137,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
           let total = 0;
           this.points.forEach((p) => (total += p.y));
           return `
-            <b>${months[selectedMonth]} - ${weekLabel}</b><br/>
+            <b>${months[monthIndex]} - ${weekLabel}</b><br/>
             <span style="color:${PEAK_COLOR}">●</span> Peak: <b>${round2(this.points[0].y)} kWh</b><br/>
             <span style="color:${NORMAL_COLOR}">●</span> Normal: <b>${round2(this.points[1].y)} kWh</b><br/>
             <span style="color:${OFFPEAK_COLOR}">●</span> Off-Peak: <b>${round2(this.points[2].y)} kWh</b><br/>
@@ -165,7 +157,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       credits: { enabled: false },
       legend: { align: 'center', verticalAlign: 'bottom' },
     };
-  }, [weeklyData, selectedMonth]);
+  }, [weeklyData, monthIndex]);
 
   return (
     <div className="grid grid-cols-1 md:flex gap-4 rounded-lg">
@@ -181,8 +173,8 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       <div className="bg-white rounded-lg shadow-md p-3 md:flex-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-2 text-center">
           {loadingWeek
-            ? `Loading ${months[selectedMonth]} Data...`
-            : `${months[selectedMonth]} - Weekly Consumption`}
+            ? `Loading ${months[monthIndex]} Data...`
+            : `${months[monthIndex]} - Weekly Consumption`}
         </h2>
         {!loadingWeek && Object.keys(weeklyData).length > 0 && (
           <HighchartsReact highcharts={Highcharts} options={weekOptions} />

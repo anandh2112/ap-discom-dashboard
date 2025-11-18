@@ -212,7 +212,7 @@ export default function Loadshift() {
                 Shift (%)
               </th>
               <th className="border px-4 py-2" colSpan={2}>
-                Peak Hour Consumption (Wh)
+                Peak Hour Consumption (kWh)
               </th>
               <th className="border px-4 py-2" colSpan={2}>
                 Cost (₹)

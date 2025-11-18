@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useLocation } from "react-router-dom"
-import { User, ArrowRight } from "lucide-react"
+import { User, ArrowRight, Search } from "lucide-react"
 
 export default function Navbar({
   onHelp,
@@ -10,6 +10,8 @@ export default function Navbar({
   setSubViewMode,
   selectedDate,
   setSelectedDate,
+  searchQuery,
+  setSearchQuery,
 }) {
   const [open, setOpen] = useState(false)
   const [tempDate, setTempDate] = useState(selectedDate) // temporary date for picker
@@ -17,6 +19,7 @@ export default function Navbar({
 
   const isConsumerDetail = location.pathname.includes("/consumer/")
   const isVarianceInsights = location.pathname.includes("/insights/variance")
+  const isConsumerList = location.pathname === "/consumers"
 
   const MIN_DATE = "2025-02-22"
   const MAX_DATE = "2025-10-08"
@@ -34,6 +37,20 @@ export default function Navbar({
     <div className="flex justify-end items-center bg-white shadow px-4 sm:px-6 py-2 border-b border-gray-300 min-h-[50px]">
       {/* Left Section: Page Controls */}
       <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
+        {/* Search bar for Consumer List */}
+        {isConsumerList && (
+          <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-2 sm:px-3 py-1">
+            <input
+              type="text"
+              placeholder="Service No"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="text-sm sm:text-base outline-none"
+            />
+            <Search size={16} className="text-gray-600" />
+          </div>
+        )}
+
         <div className="flex items-center gap-2 sm:gap-4 min-h-[36px]">
           {isConsumerDetail || isVarianceInsights ? (
             <>

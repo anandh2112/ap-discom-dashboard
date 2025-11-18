@@ -148,7 +148,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
     chart: { type: 'column', height: 350, backgroundColor: 'transparent' },
     title: { text: null },
     xAxis: { categories: hours, title: { text: 'Hour of Day' } },
-    yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)' } },
+    yAxis: { title: { text: graphType === 'consumption' ? 'Consumption (kWh)' : 'Cost (₹)' } },
     tooltip: {
       // Use point.index to reliably find the correct numeric value and avoid string indexing issues.
       formatter: function () {
@@ -165,7 +165,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
 
         const formattedValue =
           graphType === 'consumption'
-            ? `${val.toFixed(2)} Wh`
+            ? `${val.toFixed(2)} kWh`
             : `₹${val.toFixed(2)}`
 
         return `<b>${hourLabel}:00</b> (${slot})<br/><b>${
@@ -175,7 +175,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
     },
     series: [
       {
-        name: graphType === 'consumption' ? 'Consumption (Wh)' : 'Cost (₹)',
+        name: graphType === 'consumption' ? 'Consumption (kWh)' : 'Cost (₹)',
         data: (graphType === 'consumption' ? consumptionSeries : costSeries).map((val, idx) => ({
           y: val,
           color: barColors[idx],
@@ -207,7 +207,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50'
               }`}
             >
-              {type === 'consumption' ? 'Wh' : '₹'}
+              {type === 'consumption' ? 'kWh' : '₹'}
             </button>
           ))}
         </div>

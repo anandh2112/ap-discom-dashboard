@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { useEffect, useState } from "react"
 
-export default function ConsumerList() {
+export default function ConsumerList({ searchQuery }) {
   const [consumers, setConsumers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -9,7 +9,7 @@ export default function ConsumerList() {
 
   const CACHE_KEY = "consumerDataCache"
   const CACHE_TIMESTAMP_KEY = "consumerDataTimestamp"
-  const CACHE_VALIDITY_HOURS = 12 // you can adjust this
+  const CACHE_VALIDITY_HOURS = 12
 
   // Detect online/offline
   useEffect(() => {
@@ -33,24 +33,17 @@ export default function ConsumerList() {
           cachedTimestamp &&
           Date.now() - parseInt(cachedTimestamp, 10) < CACHE_VALIDITY_HOURS * 3600 * 1000
 
-        // Use cached data immediately if available
         if (cachedData) {
           const parsed = JSON.parse(cachedData)
           setConsumers(parsed)
           setLoading(false)
         }
 
-        // If offline and cache exists, skip network call
-        if (!navigator.onLine && cachedData) {
-          console.log("Offline mode: showing cached consumer data")
-          return
-        }
+        if (!navigator.onLine && cachedData) return
 
-        // Otherwise, fetch from network
         const res = await fetch("https://ee.elementsenergies.com/api/fetchAllParUniqueMSN", { cache: "no-store" })
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`)
         const data = await res.json()
-
         if (!Array.isArray(data)) throw new Error("Unexpected API response format")
 
         const formatted = data.map((item, index) => ({
@@ -62,7 +55,6 @@ export default function ConsumerList() {
           htIncomer: item.actual_voltage ? parseInt(item.actual_voltage) : "N/A",
         }))
 
-        // Update cache & state
         localStorage.setItem(CACHE_KEY, JSON.stringify(formatted))
         localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString())
         setConsumers(formatted)
@@ -76,6 +68,11 @@ export default function ConsumerList() {
 
     fetchConsumers()
   }, [])
+
+  // Filter consumers by searchQuery
+  const filteredConsumers = consumers.filter((c) =>
+    c.serviceNo.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="p-6">
@@ -95,11 +92,11 @@ export default function ConsumerList() {
         </div>
       )}
 
-      {!loading && !error && consumers.length === 0 && (
+      {!loading && !error && filteredConsumers.length === 0 && (
         <p className="text-gray-600">No consumer data available.</p>
       )}
 
-      {!loading && consumers.length > 0 && (
+      {!loading && filteredConsumers.length > 0 && (
         <table className="min-w-full bg-white shadow-lg overflow-hidden border border-gray-200">
           <thead className="bg-blue-600 text-white">
             <tr>
@@ -112,7 +109,7 @@ export default function ConsumerList() {
             </tr>
           </thead>
           <tbody>
-            {consumers.map((c) => (
+            {filteredConsumers.map((c) => (
               <tr key={c.sno} className="text-center border-b hover:bg-slate-100">
                 <td className="py-2">{c.sno}</td>
                 <td className="py-2">{c.serviceNo}</td>
