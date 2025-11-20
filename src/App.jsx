@@ -6,6 +6,7 @@ import ConsumerList from "./components/Consumerlist"
 import ConsumerDetail from "./components/Consumerdetail"
 import VarianceInsights from "./components/Varianceinsights"
 import TODInsights from "./components/TODinsights"
+import TypeInsights from "./components/Typeinsights" // ✅ NEW IMPORT
 import { useState, useEffect } from "react"
 import HelpModal from "./components/Helpmodal"
 
@@ -64,10 +65,12 @@ export default function App() {
         <div className="flex-1 overflow-y-auto p-2">
           <Routes>
             <Route path="/" element={<Overview />} />
+
             <Route
               path="/consumers"
               element={<ConsumerList searchQuery={searchQuery} />}
             />
+
             <Route
               path="/consumer/:id"
               element={
@@ -77,6 +80,7 @@ export default function App() {
                 />
               }
             />
+
             <Route
               path="/insights/variance"
               element={
@@ -87,7 +91,11 @@ export default function App() {
                 />
               }
             />
+
             <Route path="/insights/tod" element={<TODInsights />} />
+
+            {/* ✅ NEW ROUTE FOR TYPE INSIGHTS */}
+            <Route path="/insights/type" element={<TypeInsights />} />
           </Routes>
         </div>
       </div>

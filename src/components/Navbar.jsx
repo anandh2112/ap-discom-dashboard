@@ -22,7 +22,7 @@ export default function Navbar({
   const isConsumerList = location.pathname === "/consumers"
 
   const MIN_DATE = "2025-02-22"
-  const MAX_DATE = "2025-10-08"
+  const MAX_DATE = "2025-11-14" // Updated max date
 
   // Toggle groups based on page
   const mainToggles = isConsumerDetail

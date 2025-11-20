@@ -2,123 +2,178 @@ const express = require('express');
 const pool = require('./dbpg.js');
 const router = express.Router();
 
-// --- Helper to format timestamp ---
+// ------------------------------
+// Helpers
+// ------------------------------
 function formatLocalTS(ts) {
-  const d = new Date(ts);
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-// --- Helper to format date as YYYY-MM-DD ---
-function formatLocalDate(d) {
-  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-}
-
-// --- Tariff classification ---
-function getTariffBucket(hour) {
-  if ((hour >= 6 && hour < 10) || (hour >= 18 && hour < 22)) return 'Peak';
-  if ((hour >= 0 && hour < 6) || (hour >= 10 && hour < 15)) return 'Off-Peak';
-  return 'Normal';
-}
-
-router.get('/', async (req, res) => {
-  try {
-    const { scno, month } = req.query;
-    if (!scno || !month) {
-      return res.status(400).json({ message: 'Missing scno or month' });
-    }
-
-    // Example: month = "2025-10"
-    const startDate = new Date(`${month}-01 00:30:00`);
-    const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1, 0, 30, 0);
-
-    const query = `
-      SELECT ts, wh_imp
-      FROM ht_blp
-      WHERE scno = $1 AND ts >= $2 AND ts < $3
-      ORDER BY ts ASC;
-    `;
-    const result = await pool.query(query, [scno, startDate, endDate]);
-    const rows = result.rows;
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'No readings found for this month' });
-    }
-
-    // --- Step 1: Determine total weeks in this month ---
-    const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-    const totalWeeks = Math.ceil(daysInMonth / 7);
-
-    // Initialize structure like:
-    // Week-1: { totalConsumption: 0, Peak: 0, Normal: 0, Off-Peak: 0 }
-    const weeklyConsumption = {};
-    for (let i = 1; i <= totalWeeks; i++) {
-      weeklyConsumption[`Week-${i}`] = {
-        totalConsumption: 0,
-        Peak: 0,
-        Normal: 0,
-        'Off-Peak': 0
-      };
-    }
-
-    // --- Step 2: Create a map of timestamps for faster access ---
-    const whMap = new Map();
-    for (const row of rows) {
-      const formattedTs = formatLocalTS(row.ts);
-      whMap.set(formattedTs, row.wh_imp);
-    }
-
+    const d = new Date(ts);
     const pad = (n) => n.toString().padStart(2, '0');
+    return (
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+        `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    );
+}
 
-    // --- Step 3: Iterate day by day and hour by hour ---
-    for (let d = 1; d <= daysInMonth; d++) {
-      const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), d);
-      const formattedCurrentDate = formatLocalDate(currentDate);
-      const weekNumber = Math.ceil(d / 7);
-      const weekKey = `Week-${weekNumber}`;
+function formatLocalDate(d) {
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
-      for (let hour = 0; hour < 24; hour++) {
-        const halfHourKey = `${formattedCurrentDate} ${pad(hour)}:30:00`;
-        let nextHourKey;
+const pad = (n) => n.toString().padStart(2, '0');
 
-        if (hour === 23) {
-          const nextDay = new Date(currentDate);
-          nextDay.setDate(currentDate.getDate() + 1);
-          const formattedNextDay = formatLocalDate(nextDay);
-          nextHourKey = `${formattedNextDay} 00:00:00`;
-        } else {
-          nextHourKey = `${formattedCurrentDate} ${pad(hour + 1)}:00:00`;
+// ------------------------------
+// Main API
+// ------------------------------
+router.get('/', async (req, res) => {
+    try {
+        // Fetch all readings with necessary columns
+        const query = `
+            SELECT scno, short_name, ts, wh_imp
+            FROM ht_blp
+            ORDER BY ts ASC;
+        `;
+        const result = await pool.query(query);
+        const rows = result.rows;
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Dataset empty" });
         }
 
-        const val1 = whMap.get(halfHourKey);
-        const val2 = whMap.get(nextHourKey);
+        // Group data by SCNO
+        const consumers = {};
 
-        if (val1 !== undefined || val2 !== undefined) {
-          const v1 = val1 ?? 0;
-          const v2 = val2 ?? 0;
-          const consumption = (v1 + v2) / 1000; // Wh → kWh
+        for (const row of rows) {
+            const key = row.scno;
 
-          const bucket = getTariffBucket(hour);
-          weeklyConsumption[weekKey][bucket] += consumption;
-          weeklyConsumption[weekKey].totalConsumption += consumption;
+            if (!consumers[key]) {
+                consumers[key] = {
+                    shortName: row.short_name || "Unknown",
+                    whMap: new Map(),
+                };
+            }
+
+            consumers[key].whMap.set(formatLocalTS(row.ts), row.wh_imp);
         }
-      }
+
+        const allResults = [];
+
+        // Process each SCNO separately
+        for (const [scno, data] of Object.entries(consumers)) {
+            const { shortName, whMap } = data;
+
+            // Get min/max timestamps
+            const timestamps = Array.from(whMap.keys()).map((t) => new Date(t));
+            timestamps.sort((a, b) => a - b);
+
+            const startDate = new Date(formatLocalDate(timestamps[0]));
+            const endDate = new Date(formatLocalDate(timestamps[timestamps.length - 1]));
+
+            // Counters
+            let flat = 0;
+            let day = 0;
+            let night = 0;
+            let random = 0;
+
+            // Loop day by day
+            let currentDate = new Date(startDate);
+
+            while (currentDate <= endDate) {
+                const dateStr = formatLocalDate(currentDate);
+
+                // ---- Hourly Consumption Array ----
+                const hourlyConsumption = [];
+
+                for (let hour = 0; hour < 24; hour++) {
+                    const halfHourKey = `${dateStr} ${pad(hour)}:30:00`;
+
+                    let nextHourKey;
+                    if (hour === 23) {
+                        const nextDay = new Date(currentDate);
+                        nextDay.setDate(currentDate.getDate() + 1);
+                        nextHourKey = `${formatLocalDate(nextDay)} 00:00:00`;
+                    } else {
+                        nextHourKey = `${dateStr} ${pad(hour + 1)}:00:00`;
+                    }
+
+                    const val1 = whMap.get(halfHourKey);
+                    const val2 = whMap.get(nextHourKey);
+
+                    if (val1 !== undefined || val2 !== undefined) {
+                        const v1 = val1 ?? 0;
+                        const v2 = val2 ?? 0;
+                        const consumption = (v1 + v2) / 1000; // kWh
+
+                        hourlyConsumption.push({
+                            hour,
+                            consumption: parseFloat(consumption.toFixed(2)),
+                        });
+                    }
+                }
+
+                if (hourlyConsumption.length > 0) {
+                    // -------------------------------------
+                    // A. FLAT CATEGORY LOGIC (18 hours stable)
+                    // -------------------------------------
+                    let stableCount = 0;
+                    for (let i = 1; i < hourlyConsumption.length; i++) {
+                        const prev = hourlyConsumption[i - 1].consumption;
+                        const curr = hourlyConsumption[i].consumption;
+                        if (curr >= prev * 0.8 && curr <= prev * 1.2) {
+                            stableCount++;
+                        }
+                    }
+                    const isFlat = stableCount >= 18;
+
+                    // -------------------------------------
+                    // B. DAY CATEGORY (80% between 6am–6pm)
+                    // -------------------------------------
+                    const dayHours = hourlyConsumption.filter(h => h.hour >= 6 && h.hour < 18);
+                    const nightHours = hourlyConsumption.filter(h => h.hour >= 18 || h.hour < 6);
+
+                    const total = hourlyConsumption.reduce((a, b) => a + b.consumption, 0);
+                    const totalDay = dayHours.reduce((a, b) => a + b.consumption, 0);
+                    const totalNight = nightHours.reduce((a, b) => a + b.consumption, 0);
+
+                    const pctDay = (totalDay / total) * 100;
+                    const pctNight = (totalNight / total) * 100;
+
+                    if (isFlat) {
+                        flat++;
+                    } else if (pctDay >= 80) {
+                        day++;
+                    } else if (pctNight >= 80) {
+                        night++;
+                    } else {
+                        random++;
+                    }
+                }
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Days of Data logic
+            const x = whMap.size;
+            const y = x / 2;
+            const z = y / 24; // final days
+
+            allResults.push({
+                SCNO: scno,
+                Consumer: shortName,
+                DaysOfData: parseFloat(z.toFixed(2)),
+                PatternCounts: {
+                    flat,
+                    day,
+                    night,
+                    random
+                }
+            });
+        }
+
+        return res.json(allResults);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-
-    // --- Step 4: Round values to 2 decimals ---
-    for (const week in weeklyConsumption) {
-      for (const key in weeklyConsumption[week]) {
-        weeklyConsumption[week][key] = parseFloat(weeklyConsumption[week][key].toFixed(2));
-      }
-    }
-
-    // ✅ Final response
-    res.json(weeklyConsumption);
-
-  } catch (error) {
-    console.error('Error in fetchConsumerWiseMonthWiseWeeklyTariffBasedConsumption:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
 });
 
 module.exports = router;

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   LineChart,
   PieChart,
+  Layers,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -21,6 +22,7 @@ export default function Sidebar() {
   const insightsSubmenu = [
     { to: "/insights/variance", label: "Variance", icon: <LineChart size={14} /> },
     { to: "/insights/tod", label: "TOD", icon: <PieChart size={14} /> },
+    { to: "/insights/type", label: "Type", icon: <Layers size={14} /> }, // ✅ NEW
   ]
 
   return (
