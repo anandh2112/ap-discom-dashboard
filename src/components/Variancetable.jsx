@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 
 const CACHE_KEY_BASE = "varianceTableCache"
 const CACHE_EXPIRY_HOURS = 12
@@ -99,6 +100,27 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     return { url, cacheKey }
   }
 
+  // Helper: sort array of formatted rows by serviceNo (numeric if possible, otherwise string)
+  const sortByServiceNo = (arr) => {
+    if (!Array.isArray(arr)) return arr
+    return arr.slice().sort((a, b) => {
+      const aRaw = a?.serviceNo ?? a?.SCNO ?? ""
+      const bRaw = b?.serviceNo ?? b?.SCNO ?? ""
+
+      const aNum = Number(aRaw)
+      const bNum = Number(bRaw)
+
+      const aNumValid = !Number.isNaN(aNum)
+      const bNumValid = !Number.isNaN(bNum)
+
+      if (aNumValid && bNumValid) {
+        return aNum - bNum
+      }
+
+      return String(aRaw).localeCompare(String(bRaw))
+    })
+  }
+
   // Fetch data with caching (based on endpoint built above)
   async function fetchData() {
     setLoading(true)
@@ -113,7 +135,8 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
           const parsed = JSON.parse(cachedRaw)
           const now = Date.now()
           if (now - parsed.timestamp < CACHE_EXPIRY_HOURS * 3600 * 1000) {
-            setData(parsed.data)
+            // Ensure cached data is sorted by serviceNo before showing
+            setData(sortByServiceNo(parsed.data))
             setLoading(false)
             return
           }
@@ -138,12 +161,12 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
         },
       }))
 
-      // Additionally, flatten common fields (average/peak/low) for each sub when needed in the filter/sort code.
-      // But we'll compute those on-the-fly in the memoized pipeline for simplicity.
+      // Sort by serviceNo before setting state and caching so default view is ordered
+      const sorted = sortByServiceNo(formatted)
 
-      setData(formatted)
+      setData(sorted)
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: formatted }))
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: sorted }))
       } catch (e) {
         // ignore localStorage write failures (e.g., storage full)
       }
@@ -154,7 +177,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          setData(parsed.data)
+          setData(sortByServiceNo(parsed.data))
         } catch (e) {
           // ignore
         }
@@ -667,8 +690,13 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="border px-3 py-2">{i + 1}</td>
                     <td className="border px-3 py-2 font-medium">
-                      {row.consumer}{" "}
-                      <span className="text-gray-500 text-xs">({row.serviceNo})</span>
+                      <Link
+                        to={`/consumer/${row.serviceNo}`}
+                        state={{ scno: row.serviceNo, short_name: row.consumer }}
+                        className="text-blue-600 font-semibold"
+                      >
+                        {row.consumer} <span className="text-gray-500 text-xs">({row.serviceNo})</span>
+                      </Link>
                     </td>
                     <td className="border px-3 py-2">{row.average ?? "-"}</td>
 

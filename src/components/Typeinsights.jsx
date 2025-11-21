@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 
 export default function TypeInsights() {
   const [data, setData] = useState([]);
@@ -12,14 +13,14 @@ export default function TypeInsights() {
   const CACHE_EXPIRY_HOURS = 12;
 
   // Filter & Sort State
-  const [filterColumn, setFilterColumn] = useState("Days"); // "Days" or "Type"
+  const [filterColumn, setFilterColumn] = useState("Days");
   const [daysMin, setDaysMin] = useState("");
   const [daysMax, setDaysMax] = useState("");
   const typeSubColumns = ["Flat", "Morning", "Night", "Others"];
   const [typeMin, setTypeMin] = useState({ Flat: "", Morning: "", Night: "", Others: "" });
   const [typeMax, setTypeMax] = useState({ Flat: "", Morning: "", Night: "", Others: "" });
-  const [sortColumn, setSortColumn] = useState("Days"); // "Days" or one of the subcolumns
-  const [sortOrder, setSortOrder] = useState(null); // 'asc' | 'desc' | null
+  const [sortColumn, setSortColumn] = useState("Days");
+  const [sortOrder, setSortOrder] = useState(null);
 
   const isCacheValid = () => {
     const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
@@ -40,11 +41,22 @@ export default function TypeInsights() {
 
   const fetchAndUpdateCache = async () => {
     const res = await fetch("https://ee.elementsenergies.com/api/fetchAllConsumerConsumptionType");
-    if (!res.ok) throw new Error("Network error");
-    const jsonData = await res.json();
 
+    if (!res.ok) throw new Error(`Network error: ${res.status} ${res.statusText}`);
+
+    let jsonData;
+    try {
+      jsonData = await res.json();
+    } catch (err) {
+      const text = await res.text();
+      console.error("Failed to parse JSON:", text);
+      throw new Error("Failed to parse API response as JSON");
+    }
+
+    // UPDATED FORMAT HERE
     const formattedData = jsonData.map((item) => ({
-      consumer: `${item.Consumer} (${item.SCNO})`,
+      consumer: item.Consumer,
+      serviceNo: item.SCNO,
       days: item.DaysOfData,
       type: {
         Flat: item.PatternCounts.flat,
@@ -71,7 +83,7 @@ export default function TypeInsights() {
       if (cachedData && isCacheValid()) {
         setData(cachedData);
         setLoading(false);
-        if (navigator.onLine) fetchAndUpdateCache();
+        if (navigator.onLine) fetchAndUpdateCache().catch(err => console.warn("Background update failed:", err));
         return;
       }
       await fetchAndUpdateCache();
@@ -81,7 +93,7 @@ export default function TypeInsights() {
       if (cachedData) {
         setData(cachedData);
       } else {
-        setError("Unable to fetch data. Please connect to the internet.");
+        setError("Unable to fetch data. Please connect to the internet or try again later.");
       }
     } finally {
       setLoading(false);
@@ -165,15 +177,15 @@ export default function TypeInsights() {
 
         {/* Filters & Sorting */}
         <div className="flex flex-wrap gap-2 mb-4 items-center justify-around">
-            <label className="flex items-center gap-1 text-sm">
+          <label className="flex items-center gap-1 text-sm">
             Column:
             <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)} className="border px-1 py-1 rounded text-xs">
-                <option value="Days">Days</option>
-                <option value="Type">Type</option>
+              <option value="Days">Days</option>
+              <option value="Type">Type</option>
             </select>
-            </label>
+          </label>
 
-            {filterColumn === "Days" && (
+          {filterColumn === "Days" && (
             <>
               <div className="flex items-center gap-1 text-sm">
                 <span>Range:</span>
@@ -186,36 +198,36 @@ export default function TypeInsights() {
                 <button onClick={() => { setSortColumn("Days"); setSortOrder(sortOrder === "desc" ? null : "desc"); }} className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" && sortColumn === "Days" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▼</button>
               </div>
             </>
-            )}
+          )}
 
-            {filterColumn === "Type" && (
+          {filterColumn === "Type" && (
             <>
-                {typeSubColumns.map((sub) => (
+              {typeSubColumns.map((sub) => (
                 <div key={sub} className="flex items-center gap-1 text-sm">
-                    <span>{sub}:</span>
-                    <input type="number" placeholder="min" value={typeMin[sub]} onChange={(e) => setTypeMin({...typeMin, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
-                    <span>-</span>
-                    <input type="number" placeholder="max" value={typeMax[sub]} onChange={(e) => setTypeMax({...typeMax, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
+                  <span>{sub}:</span>
+                  <input type="number" placeholder="min" value={typeMin[sub]} onChange={(e) => setTypeMin({...typeMin, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
+                  <span>-</span>
+                  <input type="number" placeholder="max" value={typeMax[sub]} onChange={(e) => setTypeMax({...typeMax, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
                 </div>
-                ))}
+              ))}
 
-                <label className="flex items-center gap-1 text-sm">
+              <label className="flex items-center gap-1 text-sm">
                 Sort by:
                 <select value={sortColumn} onChange={(e) => setSortColumn(e.target.value)} className="border px-1 py-1 rounded text-xs">
-                    {typeSubColumns.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
+                  {typeSubColumns.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
                 </select>
-                </label>
+              </label>
 
-                <div className="flex gap-1">
+              <div className="flex gap-1">
                 <button onClick={() => setSortOrder(sortOrder === "asc" ? null : "asc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▲</button>
                 <button onClick={() => setSortOrder(sortOrder === "desc" ? null : "desc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▼</button>
-                </div>
+              </div>
             </>
-            )}
+          )}
 
-            <button onClick={clearAll} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">↻</button>
+          <button onClick={clearAll} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">↻</button>
         </div>
-        
+
         {isOffline && (
           <div className="bg-yellow-200 text-yellow-900 text-center py-2 text-sm font-medium rounded-t-md">
             ⚠️ You are offline — showing cached data
@@ -243,7 +255,23 @@ export default function TypeInsights() {
               filteredAndSortedData.map((row, idx) => (
                 <tr key={idx}>
                   <td className="border px-3 py-2">{idx + 1}</td>
-                  <td className="border px-3 py-2 font-medium">{row.consumer}</td>
+
+                  {/* UPDATED CONSUMER COLUMN - NOW CLICKABLE */}
+                  <td className="border px-3 py-2 font-medium">
+                    <Link
+                      to={`/consumer/${row.serviceNo}`}
+                      state={{
+                        scno: row.serviceNo,
+                        short_name: row.consumer,
+                      }}
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-semibold"
+                    >
+                      {row.consumer}
+                    </Link>
+                    {" "}
+                    <span className="text-gray-500 text-xs">({row.serviceNo})</span>
+                  </td>
+
                   <td className="border px-3 py-2">{row.days}</td>
                   {typeSubColumns.map((sub) => <td key={sub} className="border px-3 py-2">{row.type[sub]}</td>)}
                 </tr>

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react"
+import { Link } from "react-router-dom"
 
 export default function TODTable() {
   const [data, setData] = useState([])
@@ -31,6 +32,28 @@ export default function TODTable() {
     }
   }
 
+  // Helper: sort an array of rows by SCNO (numeric if possible, otherwise string)
+  const sortBySCNO = (arr) => {
+    if (!Array.isArray(arr)) return arr
+    return arr.slice().sort((a, b) => {
+      const aRaw = a?.SCNO
+      const bRaw = b?.SCNO
+
+      const aNum = Number(aRaw)
+      const bNum = Number(bRaw)
+
+      const aNumValid = !isNaN(aNum)
+      const bNumValid = !isNaN(bNum)
+
+      if (aNumValid && bNumValid) {
+        return aNum - bNum
+      }
+
+      // Fallback to string compare
+      return String(aRaw ?? "").localeCompare(String(bRaw ?? ""))
+    })
+  }
+
   const fetchData = async () => {
     if (hasLoadedRef.current) return
     hasLoadedRef.current = true
@@ -41,17 +64,18 @@ export default function TODTable() {
     try {
       const cachedData = loadCachedData()
       if (cachedData && isCacheValid()) {
-        setData(cachedData)
+        // Ensure cached data is sorted by SCNO before showing
+        setData(sortBySCNO(cachedData))
         setLoading(false)
         if (navigator.onLine) fetchAndUpdateCache()
         return
       }
       await fetchAndUpdateCache()
     } catch (err) {
-      console.warn("⚠️ Fetch failed:", err.message)
+      console.warn("⚠️ Fetch failed:", err?.message ?? err)
       const cachedData = loadCachedData()
       if (cachedData) {
-        setData(cachedData)
+        setData(sortBySCNO(cachedData))
       } else {
         setError("Unable to fetch data. Please connect to the internet.")
       }
@@ -65,10 +89,13 @@ export default function TODTable() {
     if (!response.ok) throw new Error("Network error")
     const jsonData = await response.json()
 
-    localStorage.setItem(CACHE_KEY, JSON.stringify(jsonData))
+    // Sort by SCNO before storing and setting state so default view is ordered
+    const sorted = sortBySCNO(jsonData)
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(sorted))
     localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString())
 
-    setData(jsonData)
+    setData(sorted)
   }
 
   useEffect(() => {
@@ -138,6 +165,7 @@ export default function TODTable() {
 
     let result = data.filter(passesFilters)
 
+    // If no explicit UI sort order is set, preserve the order from `data` (which is sorted by SCNO by default).
     if (sortOrder && sortMetric) {
       const cat = selectedCategory
       const metric = sortMetric
@@ -321,8 +349,16 @@ export default function TODTable() {
                 <tr key={idx}>
                   <td className="border px-3 py-2">{idx + 1}</td>
                   <td className="border px-3 py-2 font-medium">
-                    {row.Consumer}{" "}
-                    <span className="text-gray-500 text-xs">({row.SCNO})</span>
+                    <Link
+                      to={`/consumer/${row.SCNO}`}
+                      state={{
+                        scno: row.SCNO,
+                        short_name: row.Consumer,
+                      }}
+                      className="text-blue-600 font-semibold"
+                    >
+                      {row.Consumer} <span className="text-gray-500 text-xs">({row.SCNO})</span>
+                    </Link>
                   </td>
 
                   {/* Peak-1 */}

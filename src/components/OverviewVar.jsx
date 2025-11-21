@@ -135,6 +135,10 @@ export default function OverviewVar() {
 
   return (
     <div className="bg-white shadow-md rounded-2xl p-3 font-poppins relative">
+      {/* Header centered using flex-grow and text-center */}
+        <div className="flex-1 text-center">
+          <h1 className="text-md font-semibold">Consumers - Variance</h1>
+        </div>
       {isOffline && (
         <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded-md mb-2 text-center">
           You are offline. Showing cached data if available.
@@ -143,11 +147,6 @@ export default function OverviewVar() {
 
       {/* Header Row */}
       <div className="flex items-center justify-between mb-2">
-        {/* Header centered using flex-grow and text-center */}
-        <div className="flex-1 text-center">
-          <h1 className="text-md font-semibold">Consumers - Variance</h1>
-        </div>
-
         {/* Buttons on right */}
         <div className="flex items-center gap-2">
           <button
@@ -178,7 +177,7 @@ export default function OverviewVar() {
       <HighchartsReact
         highcharts={Highcharts}
         options={varianceOptions}
-        key={viewMode} // ✅ Force re-render on mode change
+        key={viewMode}
       />
     </div>
   )
