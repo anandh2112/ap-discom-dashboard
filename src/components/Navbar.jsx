@@ -22,7 +22,7 @@ export default function Navbar({
   const isConsumerList = location.pathname === "/consumers"
 
   const MIN_DATE = "2025-02-22"
-  const MAX_DATE = "2025-11-14" // Updated max date
+  const MAX_DATE = "2025-11-14"
 
   // Toggle groups based on page
   const mainToggles = isConsumerDetail
@@ -107,7 +107,7 @@ export default function Navbar({
                 />
                 <button
                   onClick={() => setSelectedDate(tempDate)}
-                  className="bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition"
+                  className="bg-blue-600 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition hover:cursor-pointer"
                 >
                   <ArrowRight size={16} />
                 </button>

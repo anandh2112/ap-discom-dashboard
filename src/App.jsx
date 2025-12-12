@@ -6,7 +6,8 @@ import ConsumerList from "./components/Consumerlist"
 import ConsumerDetail from "./components/Consumerdetail"
 import VarianceInsights from "./components/Varianceinsights"
 import TODInsights from "./components/TODinsights"
-import TypeInsights from "./components/Typeinsights" // ✅ NEW IMPORT
+import TypeInsights from "./components/Typeinsights"
+import RankingInsights from "./components/Rankinginsights"
 import { useState, useEffect } from "react"
 import HelpModal from "./components/Helpmodal"
 
@@ -15,9 +16,8 @@ export default function App() {
 
   const [showHelp, setShowHelp] = useState(false);
 
-  // View toggles
   const [viewMode, setViewMode] = useState("Day");
-  const [subViewMode, setSubViewMode] = useState("M-F"); // For variance insights
+  const [subViewMode, setSubViewMode] = useState("M-F");
 
   const MAX_DATE = "2025-10-08";
   const MIN_DATE = "2025-02-22";
@@ -27,7 +27,6 @@ export default function App() {
     return saved ? saved : MAX_DATE;
   });
 
-  // Search for consumer list
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -36,7 +35,6 @@ export default function App() {
     }
   }, [selectedDate]);
 
-  // 🔥 Ensure default viewMode = "Month" only when inside VarianceInsights
   useEffect(() => {
     if (location.pathname === "/insights/variance") {
       if (viewMode === "Day") {
@@ -93,9 +91,8 @@ export default function App() {
             />
 
             <Route path="/insights/tod" element={<TODInsights />} />
-
-            {/* ✅ NEW ROUTE FOR TYPE INSIGHTS */}
             <Route path="/insights/type" element={<TypeInsights />} />
+            <Route path="/insights/ranking" element={<RankingInsights />} />
           </Routes>
         </div>
       </div>

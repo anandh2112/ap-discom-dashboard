@@ -6,10 +6,37 @@ export default function ConsumerList({ searchQuery }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
+  const [categoryFilter, setCategoryFilter] = useState("All")
 
   const CACHE_KEY = "consumerDataCache"
   const CACHE_TIMESTAMP_KEY = "consumerDataTimestamp"
   const CACHE_VALIDITY_HOURS = 12
+
+  // CATEGORY GROUPS
+  const CATEGORY_MAP = {
+    All: [],
+    Domestic: [
+      "TOWNSHIPS, COLONIES, GATED COMMUNITIES & VILLAS-HT",
+    ],
+    Commercial: [
+      "COMMERCIAL-HT",
+      "FUNCTION HALLS/ AUDITORIA-HT",
+      "ELECTRIC VEHICLES/CHARGING STATIONS",
+    ],
+    Industry: [
+      "INDUSTRY (GENERAL)-HT",
+      "SEASONAL INDUSTRIES (OFF-SEASON)-HT",
+    ],
+    Institutional: [
+      "Utilities-HT",
+      "GENERAL PURPOSE-HT",
+      "RELIGIOUS PLACES-HT",
+    ],
+    "Agro-Based": [
+      "AQUA CULTURE & ANIMAL HUSBANDRY-HT",
+      "GOVERNMENT/PRIVATE LIFT IRRIGATIION SCHEMES-HT",
+    ],
+  }
 
   // Detect online/offline
   useEffect(() => {
@@ -31,11 +58,11 @@ export default function ConsumerList({ searchQuery }) {
         const isCacheValid =
           cachedData &&
           cachedTimestamp &&
-          Date.now() - parseInt(cachedTimestamp, 10) < CACHE_VALIDITY_HOURS * 3600 * 1000
+          Date.now() - parseInt(cachedTimestamp, 10) <
+            CACHE_VALIDITY_HOURS * 3600 * 1000
 
         if (cachedData) {
-          const parsed = JSON.parse(cachedData)
-          setConsumers(parsed)
+          setConsumers(JSON.parse(cachedData))
           setLoading(false)
         }
 
@@ -46,11 +73,10 @@ export default function ConsumerList({ searchQuery }) {
         const data = await res.json()
         if (!Array.isArray(data)) throw new Error("Unexpected API response format")
 
-        const formatted = data.map((item, index) => ({
-          sno: index + 1,
+        const formatted = data.map((item) => ({
           serviceNo: item.scno || "N/A",
           name: item.short_name || "N/A",
-          category: item.category || "N/A",
+          category_desc: item.category_desc || "N/A",
           contractedDemand: item.load ? `${parseInt(item.load)} kVA` : "N/A",
           htIncomer: item.actual_voltage ? parseInt(item.actual_voltage) : "N/A",
         }))
@@ -69,14 +95,40 @@ export default function ConsumerList({ searchQuery }) {
     fetchConsumers()
   }, [])
 
-  // Filter consumers by searchQuery
-  const filteredConsumers = consumers.filter((c) =>
-    c.serviceNo.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Apply search + category filter
+  const filteredConsumers = consumers
+    .filter((c) => {
+      const matchesSearch = c.serviceNo.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const allowedCategories = CATEGORY_MAP[categoryFilter]
+      const matchesCategory =
+        categoryFilter === "All" ||
+        (c.category_desc && allowedCategories.includes(c.category_desc))
+
+      return matchesSearch && matchesCategory
+    })
+    .map((c, index) => ({
+      ...c,
+      sno: index + 1, // DYNAMIC SNO BASED ON FILTERED LIST
+    }))
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Consumer List</h1>
+    <div className="p-2">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl font-semibold">Consumer List</h1>
+
+        {/* CATEGORY DROPDOWN */}
+        <select
+          className="border px-2 py-1 rounded-md shadow-sm bg-white 
+                     focus:outline-none"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          {Object.keys(CATEGORY_MAP).map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
 
       {isOffline && (
         <div className="bg-yellow-100 text-yellow-800 p-3 rounded-md mb-4">
@@ -97,15 +149,15 @@ export default function ConsumerList({ searchQuery }) {
       )}
 
       {!loading && filteredConsumers.length > 0 && (
-        <table className="min-w-full bg-white shadow-lg overflow-hidden border border-gray-200">
+        <table className="min-w-full bg-white shadow-lg rounded-md overflow-hidden border border-gray-200">
           <thead className="bg-blue-600 text-white">
             <tr>
-              <th className="py-2 px-4">S.No</th>
-              <th className="py-2 px-4">Service No</th>
-              <th className="py-2 px-4">Consumer Name</th>
-              <th className="py-2 px-4">Category</th>
-              <th className="py-2 px-4">Contracted Demand</th>
-              <th className="py-2 px-4">HT Incomer</th>
+              <th className="py-2 px-3">S.No</th>
+              <th className="py-2 px-3">Service No</th>
+              <th className="py-2 px-3">Consumer Name</th>
+              <th className="py-2 px-3">Category</th>
+              <th className="py-2 px-3">Contracted Demand</th>
+              <th className="py-2 px-3">HT Incomer</th>
             </tr>
           </thead>
           <tbody>
@@ -124,7 +176,7 @@ export default function ConsumerList({ searchQuery }) {
                     {c.name}
                   </Link>
                 </td>
-                <td className="py-2">{c.category}</td>
+                <td className="py-2">{c.category_desc}</td>
                 <td className="py-2">{c.contractedDemand}</td>
                 <td className="py-2">{c.htIncomer}</td>
               </tr>

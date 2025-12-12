@@ -7,6 +7,7 @@ import {
   LineChart,
   PieChart,
   Layers,
+  Grid3x3, // ✅ NEW ICON
 } from "lucide-react"
 import { useState } from "react"
 
@@ -22,7 +23,8 @@ export default function Sidebar() {
   const insightsSubmenu = [
     { to: "/insights/variance", label: "Variance", icon: <LineChart size={14} /> },
     { to: "/insights/tod", label: "TOD", icon: <PieChart size={14} /> },
-    { to: "/insights/type", label: "Type", icon: <Layers size={14} /> }, // ✅ NEW
+    { to: "/insights/type", label: "Type", icon: <Layers size={14} /> },
+    { to: "/insights/ranking", label: "Ranking", icon: <Grid3x3 size={14} /> }, // New tab
   ]
 
   return (
@@ -30,7 +32,6 @@ export default function Sidebar() {
       <div className="text-center py-4 text-md font-bold">Elements</div>
 
       <nav className="flex-1 mt-4 text-sm">
-        {/* Main links */}
         {links.map(({ to, label, icon }) => (
           <Link
             key={to}
@@ -44,7 +45,6 @@ export default function Sidebar() {
           </Link>
         ))}
 
-        {/* Insights Section */}
         <div>
           <button
             onClick={() => setOpenInsights(!openInsights)}
