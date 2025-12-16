@@ -16,9 +16,10 @@ export default function TypeInsightsTable() {
   const [filterColumn, setFilterColumn] = useState("Days");
   const [daysMin, setDaysMin] = useState("");
   const [daysMax, setDaysMax] = useState("");
-  const typeSubColumns = ["Flat", "Morning", "Night", "Others"];
-  const [typeMin, setTypeMin] = useState({ Flat: "", Morning: "", Night: "", Others: "" });
-  const [typeMax, setTypeMax] = useState({ Flat: "", Morning: "", Night: "", Others: "" });
+  // New sub-columns based on updated API: Flat, Shift (count), Random
+  const typeSubColumns = ["Flat", "Shift", "Random"];
+  const [typeMin, setTypeMin] = useState({ Flat: "", Shift: "", Random: "" });
+  const [typeMax, setTypeMax] = useState({ Flat: "", Shift: "", Random: "" });
   const [sortColumn, setSortColumn] = useState("Days");
   const [sortOrder, setSortOrder] = useState(null);
 
@@ -53,16 +54,18 @@ export default function TypeInsightsTable() {
       throw new Error("Failed to parse API response as JSON");
     }
 
+    // Map API shape to the component's expected shape.
     const formattedData = jsonData.map((item) => ({
       consumer: item.Consumer,
       serviceNo: item.SCNO,
       days: item.DaysOfData,
+      // Use the 'shift' count for Shift Count and 'ShiftWindow' for the window string
       type: {
-        Flat: item.PatternCounts.flat,
-        Morning: item.PatternCounts.day,
-        Night: item.PatternCounts.night,
-        Others: item.PatternCounts.random,
+        Flat: item.PatternCounts?.flat ?? 0,
+        Shift: item.PatternCounts?.shift ?? 0,
+        Random: item.PatternCounts?.random ?? 0,
       },
+      shiftWindow: item.ShiftWindow ?? "",
     }));
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(formattedData));
@@ -82,7 +85,7 @@ export default function TypeInsightsTable() {
       if (cachedData && isCacheValid()) {
         setData(cachedData);
         setLoading(false);
-        if (navigator.onLine) fetchAndUpdateCache().catch(err => console.warn("Background update failed:", err));
+        if (navigator.onLine) fetchAndUpdateCache().catch((err) => console.warn("Background update failed:", err));
         return;
       }
       await fetchAndUpdateCache();
@@ -118,8 +121,8 @@ export default function TypeInsightsTable() {
     setFilterColumn("Days");
     setDaysMin("");
     setDaysMax("");
-    setTypeMin({ Flat: "", Morning: "", Night: "", Others: "" });
-    setTypeMax({ Flat: "", Morning: "", Night: "", Others: "" });
+    setTypeMin({ Flat: "", Shift: "", Random: "" });
+    setTypeMax({ Flat: "", Shift: "", Random: "" });
     setSortColumn("Days");
     setSortOrder(null);
   };
@@ -134,6 +137,7 @@ export default function TypeInsightsTable() {
         if (min !== null && row.days < min) return false;
         if (max !== null && row.days > max) return false;
       } else if (filterColumn === "Type") {
+        // For Shift we filter by its count (number). ShiftWindow is text and not filterable here.
         for (let sub of typeSubColumns) {
           const min = typeMin[sub] !== "" ? Number(typeMin[sub]) : null;
           const max = typeMax[sub] !== "" ? Number(typeMax[sub]) : null;
@@ -152,8 +156,9 @@ export default function TypeInsightsTable() {
           aVal = a.days;
           bVal = b.days;
         } else {
-          aVal = a.type[sortColumn];
-          bVal = b.type[sortColumn];
+          // sortColumn corresponds to a type subcolumn name (Flat | Shift | Random)
+          aVal = a.type[sortColumn] ?? 0;
+          bVal = b.type[sortColumn] ?? 0;
         }
         if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
         if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
@@ -169,7 +174,6 @@ export default function TypeInsightsTable() {
 
   return (
     <div className="relative bg-white p-3 rounded-lg shadow-md font-poppins">
-
       {/* Filters & Sorting */}
       <div className="flex flex-wrap gap-2 mb-4 items-center justify-around">
         <label className="flex items-center gap-1 text-sm">
@@ -189,8 +193,24 @@ export default function TypeInsightsTable() {
               <input type="number" placeholder="max" value={daysMax} onChange={(e) => setDaysMax(e.target.value)} className="w-16 border px-1 py-1 rounded text-xs" />
             </div>
             <div className="flex gap-1">
-              <button onClick={() => { setSortColumn("Days"); setSortOrder(sortOrder === "asc" ? null : "asc"); }} className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" && sortColumn === "Days" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▲</button>
-              <button onClick={() => { setSortColumn("Days"); setSortOrder(sortOrder === "desc" ? null : "desc"); }} className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" && sortColumn === "Days" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▼</button>
+              <button
+                onClick={() => {
+                  setSortColumn("Days");
+                  setSortOrder(sortOrder === "asc" ? null : "asc");
+                }}
+                className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" && sortColumn === "Days" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => {
+                  setSortColumn("Days");
+                  setSortOrder(sortOrder === "desc" ? null : "desc");
+                }}
+                className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" && sortColumn === "Days" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
+              >
+                ▼
+              </button>
             </div>
           </>
         )}
@@ -200,27 +220,50 @@ export default function TypeInsightsTable() {
             {typeSubColumns.map((sub) => (
               <div key={sub} className="flex items-center gap-1 text-sm">
                 <span>{sub}:</span>
-                <input type="number" placeholder="min" value={typeMin[sub]} onChange={(e) => setTypeMin({...typeMin, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
+                <input
+                  type="number"
+                  placeholder="min"
+                  value={typeMin[sub]}
+                  onChange={(e) => setTypeMin({ ...typeMin, [sub]: e.target.value })}
+                  className="w-16 border px-1 py-1 rounded text-xs"
+                />
                 <span>-</span>
-                <input type="number" placeholder="max" value={typeMax[sub]} onChange={(e) => setTypeMax({...typeMax, [sub]: e.target.value})} className="w-16 border px-1 py-1 rounded text-xs" />
+                <input
+                  type="number"
+                  placeholder="max"
+                  value={typeMax[sub]}
+                  onChange={(e) => setTypeMax({ ...typeMax, [sub]: e.target.value })}
+                  className="w-16 border px-1 py-1 rounded text-xs"
+                />
               </div>
             ))}
 
             <label className="flex items-center gap-1 text-sm">
               Sort by:
               <select value={sortColumn} onChange={(e) => setSortColumn(e.target.value)} className="border px-1 py-1 rounded text-xs">
-                {typeSubColumns.map((sub) => <option key={sub} value={sub}>{sub}</option>)}
+                <option value="Days">Days</option>
+                {typeSubColumns.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
               </select>
             </label>
 
             <div className="flex gap-1">
-              <button onClick={() => setSortOrder(sortOrder === "asc" ? null : "asc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▲</button>
-              <button onClick={() => setSortOrder(sortOrder === "desc" ? null : "desc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>▼</button>
+              <button onClick={() => setSortOrder(sortOrder === "asc" ? null : "asc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+                ▲
+              </button>
+              <button onClick={() => setSortOrder(sortOrder === "desc" ? null : "desc")} className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+                ▼
+              </button>
             </div>
           </>
         )}
 
-        <button onClick={clearAll} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">↻</button>
+        <button onClick={clearAll} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">
+          ↻
+        </button>
       </div>
 
       {isOffline && (
@@ -232,19 +275,42 @@ export default function TypeInsightsTable() {
       <table className="w-full border border-gray-300 text-sm text-center mt-2">
         <thead>
           <tr className="bg-gray-100">
-            <th rowSpan={2} className="border px-3 py-2">S No</th>
-            <th rowSpan={2} className="border px-3 py-2">Consumer</th>
-            <th rowSpan={2} className="border px-3 py-2">Days</th>
-            <th colSpan={4} className="border px-3 py-2">Type</th>
+            <th rowSpan={2} className="border px-3 py-2">
+              S No
+            </th>
+            <th rowSpan={2} className="border px-3 py-2">
+              Consumer
+            </th>
+            <th rowSpan={2} className="border px-3 py-2">
+              Days
+            </th>
+
+            {/* Flat stays as a single column */}
+            <th rowSpan={2} className="border px-3 py-2">
+              Flat
+            </th>
+
+            {/* Shift parent header with two subheaders: Count and Window */}
+            <th colSpan={2} className="border px-3 py-2">
+              Shift
+            </th>
+
+            {/* Random as single column */}
+            <th rowSpan={2} className="border px-3 py-2">
+              Random
+            </th>
           </tr>
           <tr className="bg-gray-100">
-            {typeSubColumns.map((sub) => <th key={sub} className="border px-3 py-2">{sub}</th>)}
+            <th className="border px-3 py-2">Count</th>
+            <th className="border px-3 py-2">Window</th>
           </tr>
         </thead>
         <tbody>
           {filteredAndSortedData.length === 0 ? (
             <tr>
-              <td colSpan={7} className="py-6 text-gray-500">No data available.</td>
+              <td colSpan={7} className="py-6 text-gray-500">
+                No data available.
+              </td>
             </tr>
           ) : (
             filteredAndSortedData.map((row, idx) => (
@@ -261,15 +327,23 @@ export default function TypeInsightsTable() {
                     className="text-blue-600 hover:text-blue-800 hover:underline font-semibold"
                   >
                     {row.consumer}
-                  </Link>
-                  {" "}
+                  </Link>{" "}
                   <span className="text-gray-500 text-xs">({row.serviceNo})</span>
                 </td>
 
                 <td className="border px-3 py-2">{row.days}</td>
-                {typeSubColumns.map((sub) => (
-                  <td key={sub} className="border px-3 py-2">{row.type[sub]}</td>
-                ))}
+
+                {/* Flat */}
+                <td className="border px-3 py-2">{row.type.Flat}</td>
+
+                {/* Shift Count */}
+                <td className="border px-3 py-2">{row.type.Shift}</td>
+
+                {/* Shift Window */}
+                <td className="border px-3 py-2">{row.shiftWindow || "-"}</td>
+
+                {/* Random */}
+                <td className="border px-3 py-2">{row.type.Random}</td>
               </tr>
             ))
           )}

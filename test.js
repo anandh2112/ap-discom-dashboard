@@ -2,20 +2,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('./dbpg.js');
 
-function formatLocalDate(d) {
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 router.get('/', async (req, res) => {
     try {
-        const selectedType = (req.query.type || "").toLowerCase();
-        const validTypes = ["flat", "day", "night", "random"];
-
-        if (!validTypes.includes(selectedType)) {
-            return res.status(400).json({ message: "Invalid type. Use flat/day/night/random" });
-        }
-
         const query = `
             SELECT
                 scno,
@@ -27,31 +15,41 @@ router.get('/', async (req, res) => {
             ORDER BY scno, day;
         `;
 
-        const result = await pool.query(query);
-        const rows = result.rows;
+        const { rows } = await pool.query(query);
 
-        if (rows.length === 0) {
-            return res.status(404).json({ message: "No data found" });
+        if (!rows.length) {
+            return res.status(404).json({ message: 'No data found' });
         }
 
         const consumers = {};
 
-        for (const row of rows) {
-            if (!consumers[row.scno]) {
-                consumers[row.scno] = {
-                    name: row.short_name || "Unknown",
+        for (const r of rows) {
+            if (!consumers[r.scno]) {
+                consumers[r.scno] = {
+                    name: r.short_name || "Unknown",
                     days: []
                 };
             }
 
-            consumers[row.scno].days.push({
-                date: row.day,
-                values48: row.values48.map(v => v ?? 0)
+            consumers[r.scno].days.push({
+                date: r.day,
+                values48: r.values48.map(v => v ?? 0)
             });
         }
 
+        function pad(n) {
+            return n.toString().padStart(2, '0');
+        }
+
+        function formatSlot(startHour) {
+            const endHour = (startHour + 12) % 24;
+            return `${pad(startHour)}:00 - ${pad(endHour)}:00`;
+        }
+
         function classifyDay(values48) {
-            if (!values48 || values48.length === 0) return "random";
+            if (!values48 || values48.length === 0) {
+                return { type: "random" };
+            }
 
             const hourly = new Array(24).fill(0);
             for (let i = 0; i < 24; i++) {
@@ -61,81 +59,88 @@ router.get('/', async (req, res) => {
             }
 
             const total = hourly.reduce((a, b) => a + b, 0);
-            if (total === 0) return "random";
+            if (total === 0) return { type: "random" };
 
             const avg = total / 24;
             const low = avg * 0.85;
             const high = avg * 1.15;
 
-            let withinRange = 0;
-            for (let h of hourly) {
-                if (h >= low && h <= high) withinRange++;
+            let within = 0;
+            for (const h of hourly) {
+                if (h >= low && h <= high) within++;
             }
 
-            if (withinRange >= 18) return "flat";
+            if (within >= 18) return { type: "flat" };
 
-            const dayHours = hourly.slice(9, 21);
-            const nightHours = [...hourly.slice(21), ...hourly.slice(0, 9)];
+            const extended = hourly.concat(hourly);
 
-            const tDay = dayHours.reduce((a, b) => a + b, 0);
-            const tNight = nightHours.reduce((a, b) => a + b, 0);
+            let bestWindow = null;
+            let bestSum = 0;
 
-            if (tDay >= total * 0.80) return "day";
-            if (tNight >= total * 0.80) return "night";
+            for (let start = 0; start < 24; start++) {
+                let sum = 0;
+                for (let i = start; i < start + 12; i++) {
+                    sum += extended[i];
+                }
 
-            return "random";
+                if (sum >= total * 0.9 && sum > bestSum) {
+                    bestSum = sum;
+                    bestWindow = start;
+                }
+            }
+
+            if (bestWindow !== null) {
+                return {
+                    type: "shift",
+                    slot: formatSlot(bestWindow)
+                };
+            }
+
+            return { type: "random" };
         }
 
-        const consumerStats = [];
+        const final = [];
 
         for (const [scno, c] of Object.entries(consumers)) {
-            let flat = 0, day = 0, night = 0, random = 0;
+            let flat = 0, shift = 0, random = 0;
+            const shiftSlots = {};
 
             for (const d of c.days) {
-                const type = classifyDay(d.values48);
-                if (type === "flat") flat++;
-                else if (type === "day") day++;
-                else if (type === "night") night++;
-                else random++;
+                const result = classifyDay(d.values48);
+
+                if (result.type === "flat") {
+                    flat++;
+                } else if (result.type === "shift") {
+                    shift++;
+                    shiftSlots[result.slot] = (shiftSlots[result.slot] || 0) + 1;
+                } else {
+                    random++;
+                }
             }
 
-            const totalDays = c.days.length;
+            let dominantShiftSlot = null;
+            let maxCount = 0;
 
-            consumerStats.push({
-                scno,
-                name: c.name,
-                totalDays,
-                counts: { flat, day, night, random },
-                percentages: {
-                    flat: flat / totalDays,
-                    day: day / totalDays,
-                    night: night / totalDays,
-                    random: random / totalDays
+            for (const [slot, count] of Object.entries(shiftSlots)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    dominantShiftSlot = slot;
                 }
+            }
+
+            final.push({
+                SCNO: scno,
+                Consumer: c.name,
+                DaysOfData: c.days.length,
+                PatternCounts: { flat, shift, random },
+                ShiftWindow: dominantShiftSlot
             });
         }
 
-        let maxCount = 0;
-        for (const c of consumerStats) {
-            if (c.counts[selectedType] > maxCount) {
-                maxCount = c.counts[selectedType];
-            }
-        }
+        return res.json(final);
 
-        const filtered = consumerStats
-            .filter(c => c.counts[selectedType] === maxCount && maxCount > 0)
-            .map(c => ({
-                SCNO: c.scno,
-                Consumer: c.name,
-                DaysInCategory: c.counts[selectedType],
-                Percentage: Number((c.percentages[selectedType] * 100).toFixed(2))
-            }))
-            .sort((a, b) => a.SCNO.localeCompare(b.SCNO));
-
-        return res.json(filtered);
-
-    } catch (error) {
-        console.error("Error:", error);
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
