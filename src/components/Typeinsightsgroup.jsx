@@ -7,12 +7,13 @@ export default function GroupInsights() {
   const [loading, setLoading] = useState(false)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
-  const groupOptions = ["Flat", "Day", "Night", "Random"]
+  // 🔁 Updated group options (Day + Night → Shift)
+  const groupOptions = ["Flat", "Shift", "Random"]
 
+  // 🔁 Updated type map
   const typeMap = {
     Flat: "flat",
-    Day: "day",
-    Night: "night",
+    Shift: "shift",
     Random: "random",
   }
 
@@ -44,7 +45,6 @@ export default function GroupInsights() {
       if (isOffline) {
         if (cachedData && cachedData[groupType]) {
           setConsumers(cachedData[groupType].data)
-        } else {
         }
         setLoading(false)
         return
@@ -76,7 +76,6 @@ export default function GroupInsights() {
 
         setConsumers(formattedData)
 
-        // Save to cache
         const newCache = cachedData || {}
         newCache[groupType] = {
           timestamp: now,
@@ -96,7 +95,7 @@ export default function GroupInsights() {
 
   useEffect(() => {
     const fetchHeatmapForConsumer = async (scno, index) => {
-      if (isOffline) return // No heatmap fetch while offline
+      if (isOffline) return
 
       try {
         const response = await fetch(
@@ -133,7 +132,7 @@ export default function GroupInsights() {
       <div className="flex items-center justify-between mb-4">
 
         {/* Toggle Buttons */}
-        <div className="flex items-center gap-1 ">
+        <div className="flex items-center gap-1">
           {groupOptions.map((mode) => (
             <button
               key={mode}
@@ -151,7 +150,7 @@ export default function GroupInsights() {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto ">
+      <div className="overflow-x-auto">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : consumers.length === 0 ? (
@@ -182,7 +181,9 @@ export default function GroupInsights() {
                     >
                       {c.name}
                     </Link>
-                    <span className="text-gray-500 text-xs">({c.scno})</span>
+                    <span className="text-gray-500 text-xs">
+                      ({c.scno})
+                    </span>
                   </td>
 
                   <td className="border px-3 py-2">{c.percentage}%</td>
@@ -197,7 +198,6 @@ export default function GroupInsights() {
                             backgroundColor: `rgba(0, 120, 255, ${v})`,
                           }}
                         >
-                          {/* Tooltip */}
                           <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-700 text-white text-xs rounded px-1 py-[1px] whitespace-nowrap">
                             {`${idx.toString().padStart(2, "0")}:00 - ${v.toFixed(2)}`}
                           </div>

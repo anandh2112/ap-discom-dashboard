@@ -4,6 +4,13 @@ const pool = require('./dbpg.js');
 
 router.get('/', async (req, res) => {
     try {
+        const selectedType = (req.query.type || "").toLowerCase();
+        const validTypes = ["flat", "shift", "random"];
+
+        if (!validTypes.includes(selectedType)) {
+            return res.status(400).json({ message: "Invalid type. Use flat/shift/random" });
+        }
+
         const query = `
             SELECT
                 scno,
@@ -16,51 +23,41 @@ router.get('/', async (req, res) => {
         `;
 
         const { rows } = await pool.query(query);
-
-        if (!rows.length) {
-            return res.status(404).json({ message: 'No data found' });
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "No data found" });
         }
 
         const consumers = {};
 
-        for (const r of rows) {
-            if (!consumers[r.scno]) {
-                consumers[r.scno] = {
-                    name: r.short_name || "Unknown",
-                    days: []
+        for (const row of rows) {
+            if (!consumers[row.scno]) {
+                consumers[row.scno] = {
+                    name: row.short_name || "Unknown",
+                    days: [],
+                    shiftSlots: {}
                 };
             }
 
-            consumers[r.scno].days.push({
-                date: r.day,
-                values48: r.values48.map(v => v ?? 0)
+            consumers[row.scno].days.push({
+                date: row.day,
+                values48: row.values48.map(v => v ?? 0)
             });
         }
 
-        function pad(n) {
-            return n.toString().padStart(2, '0');
-        }
-
-        function formatSlot(startHour) {
-            const endHour = (startHour + 12) % 24;
-            return `${pad(startHour)}:00 - ${pad(endHour)}:00`;
-        }
-
         function classifyDay(values48) {
-            if (!values48 || values48.length === 0) {
+            if (!values48 || values48.length !== 48) {
                 return { type: "random" };
             }
 
-            const hourly = new Array(24).fill(0);
+            const hourly = [];
             for (let i = 0; i < 24; i++) {
-                const v1 = values48[i * 2] || 0;
-                const v2 = values48[i * 2 + 1] || 0;
-                hourly[i] = (v1 + v2) / 1000;
+                hourly[i] = ((values48[i * 2] || 0) + (values48[i * 2 + 1] || 0)) / 1000;
             }
 
             const total = hourly.reduce((a, b) => a + b, 0);
             if (total === 0) return { type: "random" };
 
+            // FLAT
             const avg = total / 24;
             const low = avg * 0.85;
             const high = avg * 1.15;
@@ -69,78 +66,84 @@ router.get('/', async (req, res) => {
             for (const h of hourly) {
                 if (h >= low && h <= high) within++;
             }
-
             if (within >= 18) return { type: "flat" };
-
-            const extended = hourly.concat(hourly);
-
-            let bestWindow = null;
-            let bestSum = 0;
 
             for (let start = 0; start < 24; start++) {
                 let sum = 0;
-                for (let i = start; i < start + 12; i++) {
-                    sum += extended[i];
+                for (let i = 0; i < 12; i++) {
+                    sum += hourly[(start + i) % 24];
                 }
 
-                if (sum >= total * 0.9 && sum > bestSum) {
-                    bestSum = sum;
-                    bestWindow = start;
+                if (sum >= total * 0.9) {
+                    const end = (start + 12) % 24;
+                    const slot = `${String(start).padStart(2, '0')}:00 - ${String(end).padStart(2, '0')}:00`;
+                    return { type: "shift", slot };
                 }
-            }
-
-            if (bestWindow !== null) {
-                return {
-                    type: "shift",
-                    slot: formatSlot(bestWindow)
-                };
             }
 
             return { type: "random" };
         }
 
-        const final = [];
+        const consumerStats = [];
 
         for (const [scno, c] of Object.entries(consumers)) {
             let flat = 0, shift = 0, random = 0;
-            const shiftSlots = {};
 
             for (const d of c.days) {
                 const result = classifyDay(d.values48);
 
-                if (result.type === "flat") {
-                    flat++;
-                } else if (result.type === "shift") {
+                if (result.type === "flat") flat++;
+                else if (result.type === "shift") {
                     shift++;
-                    shiftSlots[result.slot] = (shiftSlots[result.slot] || 0) + 1;
+                    if (result.slot) {
+                        c.shiftSlots[result.slot] = (c.shiftSlots[result.slot] || 0) + 1;
+                    }
                 } else {
                     random++;
                 }
             }
 
-            let dominantShiftSlot = null;
-            let maxCount = 0;
+            const totalDays = c.days.length;
+            const percentages = {
+                flat: flat / totalDays,
+                shift: shift / totalDays,
+                random: random / totalDays
+            };
 
-            for (const [slot, count] of Object.entries(shiftSlots)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    dominantShiftSlot = slot;
-                }
+            let dominantShiftSlot = null;
+            if (Object.keys(c.shiftSlots).length > 0) {
+                dominantShiftSlot = Object.entries(c.shiftSlots)
+                    .sort((a, b) => b[1] - a[1])[0][0];
             }
 
-            final.push({
-                SCNO: scno,
-                Consumer: c.name,
-                DaysOfData: c.days.length,
-                PatternCounts: { flat, shift, random },
-                ShiftWindow: dominantShiftSlot
+            consumerStats.push({
+                scno,
+                name: c.name,
+                percentages,
+                dominantShiftSlot
             });
         }
 
-        return res.json(final);
+        const filtered = consumerStats
+            .filter(c => {
+                const p = c.percentages;
+                const maxKey = Object.keys(p).reduce((a, b) => p[a] > p[b] ? a : b);
+                return maxKey === selectedType;
+            })
+            .map(c => ({
+                SCNO: c.scno,
+                Consumer: c.name,
+                Percentage: Number((c.percentages[selectedType] * 100).toFixed(2)),
+                ...(selectedType === "shift" && c.dominantShiftSlot
+                    ? { ShiftWindow: c.dominantShiftSlot }
+                    : {})
+            }))
+            .sort((a, b) => a.SCNO.localeCompare(b.SCNO));
 
-    } catch (err) {
-        console.error(err);
+        res.json(filtered);
+
+    } catch (error) {
+        console.error("Error:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
