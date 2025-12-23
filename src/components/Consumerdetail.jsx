@@ -1,4 +1,4 @@
-import { useParams, useLocation } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import HourlyConsumption from './Hourlyconsumption'
 import Loadshift from './Loadshift'
@@ -8,16 +8,32 @@ import ConsumerInfo from './Consumerinfo'
 import ConsumerTOD from './ConsumerTOD'
 import ConsumerHeatmap from './Consumerheatmap'
 import Consumption from './Consumption'
-
+import Peakvariance from './Peakvariance'
 
 export default function ConsumerDetail({ viewMode, selectedDate }) {
   const { id } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  const scno = location.state?.scno || id
+  // Use the ID from URL params as the primary source
+  const scno = id
   const consumerName = location.state?.short_name || `Consumer ${scno}`
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  // Handle browser navigation events
+  useEffect(() => {
+    const handlePopState = () => {
+      // Force re-render when URL changes
+      window.location.reload()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
 
   // Monitor online/offline status
   useEffect(() => {
@@ -51,7 +67,12 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       )}
 
       {/* Consumer Info Cards */}
-      <ConsumerInfo consumerName={consumerName} scno={scno} selectedDate={selectedDate} viewMode={viewMode}  />
+      <ConsumerInfo 
+        consumerName={consumerName} 
+        scno={scno} 
+        selectedDate={selectedDate} 
+        viewMode={viewMode}  
+      />
 
       {/* Hourly Consumption Graph */}
       <div className="mt-4">
@@ -82,6 +103,10 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       {/* Consumption */}
       <div className="mt-4">
         <Consumption scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
+      </div>
+
+       <div className="mt-4">
+        <Peakvariance scno={scno} />
       </div>
     </div>
   )
