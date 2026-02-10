@@ -44,7 +44,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
         let newCost = []
 
         if (viewMode === 'Week') {
-          const url = `https://ee.elementsenergies.com/api/fetchWeeklySumHourlyConsumptionCost?scno=${scno}&date=${selectedDate}`
+          const url = `https://ee.elementsenergies.com/api/fetchWeeklySumHourlyConsumptionCost1?scno=${scno}&date=${selectedDate}`
           const resp = await fetch(url)
           if (!resp.ok) throw new Error(`HTTP Error: ${resp.status}`)
           const json = await resp.json()
@@ -60,7 +60,7 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
             }))
           }
         } else if (viewMode === 'Month') {
-          const url = `https://ee.elementsenergies.com/api/fetchMonthlySumHourlyConsumptionCost?scno=${scno}&date=${selectedDate}`
+          const url = `https://ee.elementsenergies.com/api/fetchMonthlySumHourlyConsumptionCost1?scno=${scno}&date=${selectedDate}`
           const resp = await fetch(url)
           if (!resp.ok) throw new Error(`HTTP Error: ${resp.status}`)
           const json = await resp.json()
@@ -76,8 +76,8 @@ export default function ConsumptionGraph({ scno, selectedDate, viewMode }) {
             }))
           }
         } else {
-          const consUrl = `https://ee.elementsenergies.com/api/fetchHourlyConsumption?scno=${scno}&date=${selectedDate}`
-          const costUrl = `https://ee.elementsenergies.com/api/fetchHourlyConsCost?scno=${scno}&date=${selectedDate}`
+          const consUrl = `https://ee.elementsenergies.com/api/fetchHourlyConsumption1?scno=${scno}&date=${selectedDate}`
+          const costUrl = `https://ee.elementsenergies.com/api/fetchHourlyConsCost1?scno=${scno}&date=${selectedDate}`
 
           const [consResp, costResp] = await Promise.all([fetch(consUrl), fetch(costUrl)])
           if (!consResp.ok || !costResp.ok) throw new Error('HTTP Error fetching daily data')

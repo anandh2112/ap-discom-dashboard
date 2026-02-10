@@ -9,7 +9,7 @@ export default function Peakvariance({ scno }) {
 
     setLoading(true)
     fetch(
-      `https://ee.elementsenergies.com/api/fetchAvgPeakVar?scno=${scno}`
+      `https://ee.elementsenergies.com/api/fetchAvgPeakVar1?scno=${scno}`
     )
       .then((res) => res.json())
       .then((res) => {
@@ -91,7 +91,7 @@ export default function Peakvariance({ scno }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold text-gray-800">
-        Peak Variance
+        Average Peak Variance
       </h3>
 
       {loading ? (

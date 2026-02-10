@@ -31,11 +31,11 @@ export default function Variance({ viewMode, scno, selectedDate }) {
       try {
         let url = ''
         if (viewMode === 'Day') {
-          url = `https://ee.elementsenergies.com/api/fetchDaywiseHighLowAvg?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchDaywiseHighLowAvg1?scno=${scno}&date=${selectedDate}`
         } else if (viewMode === 'Week') {
-          url = `https://ee.elementsenergies.com/api/fetchWeeklyHighLowAvg?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchWeeklyHighLowAvg1?scno=${scno}&date=${selectedDate}`
         } else if (viewMode === 'Month') {
-          url = `https://ee.elementsenergies.com/api/fetchMonthlyHighLowAvg?scno=${scno}&date=${selectedDate}`
+          url = `https://ee.elementsenergies.com/api/fetchMonthlyHighLowAvg1?scno=${scno}&date=${selectedDate}`
         } else {
           throw new Error('Invalid viewMode')
         }

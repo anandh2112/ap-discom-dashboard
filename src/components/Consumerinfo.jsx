@@ -31,10 +31,10 @@ export default function ConsumerInfo({ consumerName, scno, selectedDate, viewMod
         // Choose API endpoint based on view mode
         const endpoint =
           viewMode === 'Day'
-            ? 'https://ee.elementsenergies.com/api/fetchDaywiseTotalConsCost'
+            ? 'https://ee.elementsenergies.com/api/fetchDaywiseTotalConsCost1'
             : viewMode === 'Week'
-            ? 'https://ee.elementsenergies.com/api/fetchWeekwiseTotalConsCost'
-            : 'https://ee.elementsenergies.com/api/fetchMonthwiseTotalConsCost'
+            ? 'https://ee.elementsenergies.com/api/fetchWeekwiseTotalConsCost1'
+            : 'https://ee.elementsenergies.com/api/fetchMonthwiseTotalConsCost1'
 
         // If offline, try using cached data
         if (!navigator.onLine) {

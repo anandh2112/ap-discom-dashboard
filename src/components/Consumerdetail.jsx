@@ -80,9 +80,9 @@ export default function ConsumerDetail({ viewMode, selectedDate }) {
       </div>
 
       {/* Load Shift Section */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <Loadshift scno={scno} selectedDate={selectedDate} viewMode={viewMode} />
-      </div>
+      </div> */}
 
       {/* Consumer Heatmap Section */}
       <div className="mt-8">

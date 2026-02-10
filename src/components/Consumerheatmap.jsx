@@ -191,7 +191,7 @@ export default function ConsumerHeatMap({ scno, selectedDate, viewMode }) {
         }
 
         // Now fetch fresh data from API (will update cache on success)
-        const url = `https://ee.elementsenergies.com/api/fetchHMHourlyConsumption?scno=${encodeURIComponent(
+        const url = `https://ee.elementsenergies.com/api/fetchHMHourlyConsumption1?scno=${encodeURIComponent(
           scno
         )}&date=${encodeURIComponent(dateStr)}`;
 

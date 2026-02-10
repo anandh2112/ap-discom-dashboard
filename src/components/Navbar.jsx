@@ -14,15 +14,15 @@ export default function Navbar({
   setSearchQuery,
 }) {
   const [open, setOpen] = useState(false)
-  const [tempDate, setTempDate] = useState(selectedDate) // temporary date for picker
+  const [tempDate, setTempDate] = useState(selectedDate)
   const location = useLocation()
 
   const isConsumerDetail = location.pathname.includes("/consumer/")
   const isVarianceInsights = location.pathname.includes("/insights/variance")
   const isConsumerList = location.pathname === "/consumers"
 
-  const MIN_DATE = "2025-02-22"
-  const MAX_DATE = "2025-11-14"
+  const MIN_DATE = "2025-02-21"
+  const MAX_DATE = "2025-12-30"
 
   // Toggle groups based on page
   const mainToggles = isConsumerDetail

@@ -32,7 +32,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       setLoadingYear(true);
       try {
         const res = await fetch(
-          `https://ee.elementsenergies.com/api/fetchConsumerWiseYearWiseMonthlyTariffBasedConsumption?scno=${scno}&year=${year}`
+          `https://ee.elementsenergies.com/api/fetchConsumerWiseYearWiseMonthlyTariffBasedConsumption1?scno=${scno}&year=${year}`
         );
         const data = await res.json();
         setYearlyData(data);
@@ -53,7 +53,7 @@ export default function Consumption({ scno = 'ELR027', selectedDate = '2025-11-0
       try {
         const monthNum = String(monthIndex + 1).padStart(2, '0');
         const res = await fetch(
-          `https://ee.elementsenergies.com/api/fetchConsumerWiseMonthWiseWeeklyTariffBasedConsumption?scno=${scno}&month=${year}-${monthNum}`
+          `https://ee.elementsenergies.com/api/fetchConsumerWiseMonthWiseWeeklyTariffBasedConsumption1?scno=${scno}&month=${year}-${monthNum}`
         );
         const data = await res.json();
         setWeeklyData(data);
