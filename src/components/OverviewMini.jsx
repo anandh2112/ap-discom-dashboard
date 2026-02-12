@@ -36,7 +36,6 @@ export default function OverviewMini() {
       setLoading(true)
       setError(null)
 
-      // Try cache first
       const cachedData = loadFromCache()
       if (cachedData) {
         setCards(cachedData)
@@ -53,20 +52,24 @@ export default function OverviewMini() {
         }
         const data = await response.json()
 
+        const peakDemandKva = data.PeakDemand / 1000
+
         const formattedCards = [
           { title: "Active Consumers", value: data.ActiveConsumers.toLocaleString() },
           {
             title: "Total Consumption",
             value: `${data.TotalConsumption_mWh.toLocaleString()} MWh`,
           },
-          { title: "Peak Demand", value: `${data.PeakDemand.toLocaleString()} Va` },
+          {
+            title: "Peak Demand",
+            value: `${peakDemandKva.toLocaleString(undefined, { maximumFractionDigits: 2 })} kVA`,
+          },
           {
             title: "Carbon Footprint",
             value: `${(data.TotalConsumption_mWh * 0.82).toFixed(2)} tons CO₂`,
           },
         ]
 
-        // Save to cache
         localStorage.setItem(
           CACHE_KEY,
           JSON.stringify({ data: formattedCards, timestamp: new Date().getTime() })
@@ -75,7 +78,6 @@ export default function OverviewMini() {
         setCards(formattedCards)
       } catch (err) {
         console.error(err)
-        // If offline, try cache
         const cachedOffline = loadFromCache()
         if (cachedOffline) {
           setCards(cachedOffline)

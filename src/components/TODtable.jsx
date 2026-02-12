@@ -85,7 +85,7 @@ export default function TODTable() {
   }
 
   const fetchAndUpdateCache = async () => {
-    const response = await fetch("https://ee.elementsenergies.com/api/fetchAllConsumerwiseTariffBasedConsumption")
+    const response = await fetch("https://ee.elementsenergies.com/api/fetchAllConsumerwiseTariffBasedConsumption1")
     if (!response.ok) throw new Error("Network error")
     const jsonData = await response.json()
 
@@ -143,7 +143,7 @@ export default function TODTable() {
 
     const passesFilters = (row) => {
       const percentRaw = row?.TariffWisePercentage?.[selectedCategory]
-      const valueRaw = row?.TariffWiseConsumption_mWh?.[selectedCategory]
+      const valueRaw = row?.TariffWiseConsumption_MWh?.[selectedCategory]
 
       const percentVal = typeof percentRaw === "number" ? percentRaw : (percentRaw ? Number(percentRaw) : NaN)
       const valueVal = typeof valueRaw === "number" ? valueRaw : (valueRaw ? Number(valueRaw) : NaN)
@@ -170,8 +170,8 @@ export default function TODTable() {
       const cat = selectedCategory
       const metric = sortMetric
       result = result.slice().sort((a, b) => {
-        const aRaw = metric === "percent" ? a?.TariffWisePercentage?.[cat] : a?.TariffWiseConsumption_mWh?.[cat]
-        const bRaw = metric === "percent" ? b?.TariffWisePercentage?.[cat] : b?.TariffWiseConsumption_mWh?.[cat]
+        const aRaw = metric === "percent" ? a?.TariffWisePercentage?.[cat] : a?.TariffWiseConsumption_MWh?.[cat]
+        const bRaw = metric === "percent" ? b?.TariffWisePercentage?.[cat] : b?.TariffWiseConsumption_MWh?.[cat]
 
         const aVal = typeof aRaw === "number" ? aRaw : (aRaw ? Number(aRaw) : NaN)
         const bVal = typeof bRaw === "number" ? bRaw : (bRaw ? Number(bRaw) : NaN)
@@ -366,7 +366,7 @@ export default function TODTable() {
                     {isNumber(row?.TariffWisePercentage?.["Peak-1"]) ? Number(row.TariffWisePercentage["Peak-1"]).toFixed(2) : "-"}%
                   </td>
                   <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_mWh?.["Peak-1"]) ? Number(row.TariffWiseConsumption_mWh["Peak-1"]).toLocaleString() : "-"}
+                    {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-1"]) ? Number(row.TariffWiseConsumption_MWh["Peak-1"]).toLocaleString() : "-"}
                   </td>
 
                   {/* Peak-2 */}
@@ -374,7 +374,7 @@ export default function TODTable() {
                     {isNumber(row?.TariffWisePercentage?.["Peak-2"]) ? Number(row.TariffWisePercentage["Peak-2"]).toFixed(2) : "-"}%
                   </td>
                   <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_mWh?.["Peak-2"]) ? Number(row.TariffWiseConsumption_mWh["Peak-2"]).toLocaleString() : "-"}
+                    {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-2"]) ? Number(row.TariffWiseConsumption_MWh["Peak-2"]).toLocaleString() : "-"}
                   </td>
 
                   {/* Normal */}
@@ -382,7 +382,7 @@ export default function TODTable() {
                     {isNumber(row?.TariffWisePercentage?.["Normal"]) ? Number(row.TariffWisePercentage["Normal"]).toFixed(2) : "-"}%
                   </td>
                   <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_mWh?.["Normal"]) ? Number(row.TariffWiseConsumption_mWh["Normal"]).toLocaleString() : "-"}
+                    {isNumber(row?.TariffWiseConsumption_MWh?.["Normal"]) ? Number(row.TariffWiseConsumption_MWh["Normal"]).toLocaleString() : "-"}
                   </td>
 
                   {/* Off-Peak */}
@@ -390,7 +390,7 @@ export default function TODTable() {
                     {isNumber(row?.TariffWisePercentage?.["Off-Peak"]) ? Number(row.TariffWisePercentage["Off-Peak"]).toFixed(2) : "-"}%
                   </td>
                   <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_mWh?.["Off-Peak"]) ? Number(row.TariffWiseConsumption_mWh["Off-Peak"]).toLocaleString() : "-"}
+                    {isNumber(row?.TariffWiseConsumption_MWh?.["Off-Peak"]) ? Number(row.TariffWiseConsumption_MWh["Off-Peak"]).toLocaleString() : "-"}
                   </td>
 
                   {/* Entries (Days) */}

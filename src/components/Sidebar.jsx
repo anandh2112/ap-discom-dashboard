@@ -24,7 +24,7 @@ export default function Sidebar() {
     { to: "/insights/variance", label: "Variance", icon: <LineChart size={14} /> },
     { to: "/insights/tod", label: "TOD", icon: <PieChart size={14} /> },
     { to: "/insights/type", label: "Type", icon: <Layers size={14} /> },
-    { to: "/insights/ranking", label: "Ranking", icon: <Grid3x3 size={14} /> }, // New tab
+    // { to: "/insights/ranking", label: "Ranking", icon: <Grid3x3 size={14} /> },
   ]
 
   return (

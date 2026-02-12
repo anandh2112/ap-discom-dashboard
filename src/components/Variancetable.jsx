@@ -4,11 +4,11 @@ import { Link } from "react-router-dom"
 const CACHE_KEY_BASE = "varianceTableCache"
 const CACHE_EXPIRY_HOURS = 12
 
-// Map subViewMode (from parent) to the keys returned by the API
+// Map subViewMode to the subcat parameter values
 const SUBKEY_MAP = {
   "All": "All",
-  "M-F": "Mon-Fri",
-  "Mon-Fri": "Mon-Fri",
+  "M-F": "MF",
+  "Mon-Fri": "MF",
   "Sat": "Sat",
   "Sun": "Sun",
 }
@@ -77,26 +77,29 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
 
   // Build the correct endpoint URL based on parent viewMode and selectedDate
   function buildUrlAndCacheKey() {
-    // Normalize selectedDate to safe defaults
     const now = new Date()
     const defaultDate = now.toISOString().slice(0, 10) // YYYY-MM-DD
     const sel = selectedDate || defaultDate
 
-    let url = "https://ee.elementsenergies.com/api/fetchAllHighLowAvgMFSTSD"
+    let category = "all"
+    let dateParam = ""
+    const baseUrl = "https://ee.elementsenergies.com/api/fetchHighLowAvgMFSTSD"
+
     if (String(viewMode).toLowerCase() === "year") {
+      category = "year"
       const year = String(sel).split("-")[0] || String(now.getFullYear())
-      url = `https://ee.elementsenergies.com/api/fetchYearlyHighLowAvgMFSTSD?year=${encodeURIComponent(year)}`
+      dateParam = `&date=${encodeURIComponent(year)}`
     } else if (String(viewMode).toLowerCase() === "month") {
-      // pass YYYY-MM
+      category = "month"
       const parts = String(sel).split("-")
       const month = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : now.toISOString().slice(0, 7)
-      url = `https://ee.elementsenergies.com/api/fetchAllCHighLowAvgMFSTSDMonthwise?month=${encodeURIComponent(month)}`
-    } else {
-      // All - use the provided All endpoint (no params)
-      url = "https://ee.elementsenergies.com/api/fetchAllHighLowAvgMFSTSD"
+      dateParam = `&date=${encodeURIComponent(month)}`
     }
 
+    const subcat = SUBKEY_MAP[subViewMode] ?? "All"
+    const url = `${baseUrl}?category=${category}&subcat=${subcat}${dateParam}`
     const cacheKey = `${CACHE_KEY_BASE}:${url}`
+
     return { url, cacheKey }
   }
 
@@ -152,13 +155,9 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
       const formatted = (result || []).map((row) => ({
         consumer: row.Consumer ?? "-",
         serviceNo: row.SCNO ?? "-",
-        // Keep the raw sub-object so we can pick "All" / "Mon-Fri" / "Sat" / "Sun" later.
-        raw: {
-          All: row.All ?? null,
-          "Mon-Fri": row["Mon-Fri"] ?? null,
-          Sat: row.Sat ?? null,
-          Sun: row.Sun ?? null,
-        },
+        subcategory: row.Subcategory ?? "-",
+        // Store the data object directly
+        data: row.Data ?? {},
       }))
 
       // Sort by serviceNo before setting state and caching so default view is ordered
@@ -191,7 +190,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
   useEffect(() => {
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, selectedDate])
+  }, [viewMode, selectedDate, subViewMode])
 
   // Update sortMetric defaults when local "view" (Average / Average Peak / Low) changes
   useEffect(() => {
@@ -245,14 +244,12 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     very_high: 4,
   }
 
-  // Given a formatted row (which has .raw with subkeys), pick the chosen sub object and return normalized structure used by filtering/sorting/rendering
-  function pickSubView(row, subMode) {
-    const key = SUBKEY_MAP[subMode] ?? "All"
-    const obj = row.raw?.[key] ?? {}
-
-    const high = obj?.high ?? null
-    const low = obj?.low ?? null
-    const avg = obj?.average ?? null
+  // Given a formatted row, extract and normalize the structure used by filtering/sorting/rendering
+  function normalizeRow(row) {
+    const dataObj = row.data ?? {}
+    const high = dataObj?.high ?? {}
+    const low = dataObj?.low ?? {}
+    const avg = dataObj?.average ?? {}
 
     return {
       consumer: row.consumer,
@@ -287,7 +284,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     }
   }
 
-  // Filtering and sorting. We pick the selected subview for each row while processing.
+  // Filtering and sorting
   const filteredAndSortedData = useMemo(() => {
     if (!Array.isArray(data)) return []
 
@@ -305,10 +302,8 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
 
     const categorySel = categoryFilter === "any" ? null : categoryFilter
 
-    const selectedSub = SUBKEY_MAP[subViewMode] ?? "All"
-
     const passesFilters = (rawRow) => {
-      const row = pickSubView(rawRow, selectedSub)
+      const row = normalizeRow(rawRow)
 
       if (view === "Average") {
         if (avgMinN !== null) {
@@ -358,7 +353,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
       }
     }
 
-    let result = data.filter(passesFilters).map((r) => pickSubView(r, selectedSub))
+    let result = data.filter(passesFilters).map((r) => normalizeRow(r))
 
     // Sorting
     if (sortOrder && sortMetric) {
@@ -421,7 +416,6 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     categoryFilter,
     sortMetric,
     sortOrder,
-    subViewMode,
   ])
 
   if (loading) {

@@ -92,7 +92,7 @@ export default function App() {
 
             <Route path="/insights/tod" element={<TODInsights />} />
             <Route path="/insights/type" element={<TypeInsights />} />
-            <Route path="/insights/ranking" element={<RankingInsights />} />
+            {/* <Route path="/insights/ranking" element={<RankingInsights />} /> */}
           </Routes>
         </div>
       </div>

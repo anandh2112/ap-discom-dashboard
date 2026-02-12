@@ -3,47 +3,71 @@ const pool = require('./dbpg.js');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-   try {
-     const { scno, year } = req.query;
+    try {
 
-     if (!scno || !year) {
-         return res.status(400).json({ message: 'Missing required parameters: scno and year' });
-     }
+        const query = `
+            SELECT scno, peak_1, peak_2, off_peak, normal
+            FROM cons_tariff;
+        `;
 
-     const result = await pool.query(
-        `SELECT
-            TO_CHAR(ts, 'YYYY-MM') AS month,
-            MAX(va_imp) AS highest_va_imp
-         FROM peak_demand
-         WHERE scno = $1 AND TO_CHAR(ts, 'YYYY') = $2
-         GROUP BY month
-         ORDER BY month ASC;`,
-        [scno, year]
-     );
+        const result = await pool.query(query);
+        const rows = result.rows;
 
-     if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'No data found for given scno and year' });
-     }
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'No tariff data found' });
+        }
 
-     const monthMap = {};
+        const tariffCounts = {
+            'Peak': 0,
+            'Off-Peak': 0,
+            'Normal': 0
+        };
 
-     result.rows.forEach(row => {
-        // Convert VA → kVA
-        const kvaValue = parseFloat(row.highest_va_imp) / 1000;
+        for (const row of rows) {
+            const { peak_1, peak_2, off_peak, normal } = row;
 
-        monthMap[row.month] = parseFloat(kvaValue.toFixed(2));
-     });
+            const peakTotal = (Number(peak_1) || 0) + (Number(peak_2) || 0);
+            const offPeakTotal = Number(off_peak) || 0;
+            const normalTotal = Number(normal) || 0;
 
-     const response = {
-        MonthlyHighestVA: monthMap
-     };
+            const bucketData = {
+                'Peak': peakTotal,
+                'Off-Peak': offPeakTotal,
+                'Normal': normalTotal
+            };
 
-     res.json(response);
+            let maxTariff = null;
+            let maxVal = -Infinity;
 
-   } catch (error) {
-     console.error(error);
-     res.status(500).json({ message: 'Internal Server Error' });
-   }
+            for (const [tariff, val] of Object.entries(bucketData)) {
+                if (val > maxVal) {
+                    maxVal = val;
+                    maxTariff = tariff;
+                }
+            }
+
+            if (maxTariff) tariffCounts[maxTariff]++;
+        }
+
+        const totalConsumers = rows.length;
+
+        const tariffPercentages = {};
+
+        for (const [tariff, count] of Object.entries(tariffCounts)) {
+            tariffPercentages[tariff] =
+                ((count / totalConsumers) * 100).toFixed(2) + '%';
+        }
+
+        return res.json({
+            TotalConsumers: totalConsumers,
+            HighConsumptionTariffCounts: tariffCounts,
+            HighConsumptionTariffPercentages: tariffPercentages
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
 module.exports = router;

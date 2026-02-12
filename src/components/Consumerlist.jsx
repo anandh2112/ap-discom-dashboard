@@ -12,33 +12,7 @@ export default function ConsumerList({ searchQuery }) {
   const CACHE_TIMESTAMP_KEY = "consumerDataTimestamp"
   const CACHE_VALIDITY_HOURS = 12
 
-  // CATEGORY GROUPS
-  const CATEGORY_MAP = {
-    All: [],
-    Domestic: [
-      "TOWNSHIPS, COLONIES, GATED COMMUNITIES & VILLAS-HT",
-    ],
-    Commercial: [
-      "COMMERCIAL-HT",
-      "FUNCTION HALLS/ AUDITORIA-HT",
-      "ELECTRIC VEHICLES/CHARGING STATIONS",
-    ],
-    Industry: [
-      "INDUSTRY (GENERAL)-HT",
-      "SEASONAL INDUSTRIES (OFF-SEASON)-HT",
-    ],
-    Institutional: [
-      "Utilities-HT",
-      "GENERAL PURPOSE-HT",
-      "RELIGIOUS PLACES-HT",
-    ],
-    "Agro-Based": [
-      "AQUA CULTURE & ANIMAL HUSBANDRY-HT",
-      "GOVERNMENT/PRIVATE LIFT IRRIGATIION SCHEMES-HT",
-    ],
-  }
-
-  // Detect online/offline
+  /* ------------------ ONLINE / OFFLINE ------------------ */
   useEffect(() => {
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
@@ -50,33 +24,39 @@ export default function ConsumerList({ searchQuery }) {
     }
   }, [])
 
+  /* ------------------ FETCH DATA ------------------ */
   useEffect(() => {
     const fetchConsumers = async () => {
       try {
         const cachedData = localStorage.getItem(CACHE_KEY)
         const cachedTimestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY)
-        const isCacheValid =
+
+        if (
           cachedData &&
           cachedTimestamp &&
-          Date.now() - parseInt(cachedTimestamp, 10) <
+          Date.now() - Number(cachedTimestamp) <
             CACHE_VALIDITY_HOURS * 3600 * 1000
-
-        if (cachedData) {
+        ) {
           setConsumers(JSON.parse(cachedData))
           setLoading(false)
         }
 
         if (!navigator.onLine && cachedData) return
 
-        const res = await fetch("https://ee.elementsenergies.com/api/fetchAllParUniqueMSN", { cache: "no-store" })
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`)
+        const res = await fetch(
+          "https://ee.elementsenergies.com/api/fetchAllParUniqueMSN",
+          { cache: "no-store" }
+        )
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
         const data = await res.json()
-        if (!Array.isArray(data)) throw new Error("Unexpected API response format")
+        if (!Array.isArray(data)) throw new Error("Invalid API response")
 
         const formatted = data.map((item) => ({
           serviceNo: item.scno || "N/A",
           name: item.short_name || "N/A",
-          category_desc: item.category_desc || "N/A",
+          category_desc: item.category_desc || "",
           contractedDemand: item.load ? `${parseInt(item.load)} kVA` : "N/A",
           htIncomer: item.actual_voltage ? parseInt(item.actual_voltage) : "N/A",
         }))
@@ -85,7 +65,6 @@ export default function ConsumerList({ searchQuery }) {
         localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString())
         setConsumers(formatted)
       } catch (err) {
-        console.error("Error fetching consumers:", err)
         if (!consumers.length) setError(err.message)
       } finally {
         setLoading(false)
@@ -95,38 +74,38 @@ export default function ConsumerList({ searchQuery }) {
     fetchConsumers()
   }, [])
 
-  // Apply search + category filter
+  /* ------------------ FILTER LOGIC ------------------ */
   const filteredConsumers = consumers
     .filter((c) => {
-      const matchesSearch = c.serviceNo.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSearch = c.serviceNo
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
 
-      const allowedCategories = CATEGORY_MAP[categoryFilter]
+      const category = c.category_desc.toUpperCase()
+
       const matchesCategory =
         categoryFilter === "All" ||
-        (c.category_desc && allowedCategories.includes(c.category_desc))
+        (categoryFilter === "Industry" && category.includes("INDUSTRY")) ||
+        (categoryFilter === "Commercial" && category.includes("COMMERCIAL"))
 
       return matchesSearch && matchesCategory
     })
-    .map((c, index) => ({
-      ...c,
-      sno: index + 1, // DYNAMIC SNO BASED ON FILTERED LIST
-    }))
+    .map((c, index) => ({ ...c, sno: index + 1 }))
 
+  /* ------------------ UI ------------------ */
   return (
     <div className="p-2">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-semibold">Consumer List</h1>
 
-        {/* CATEGORY DROPDOWN */}
         <select
-          className="border px-2 py-1 rounded-md shadow-sm bg-white 
-                     focus:outline-none"
+          className="border px-2 py-1 rounded-md bg-white"
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
         >
-          {Object.keys(CATEGORY_MAP).map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
+          <option value="All">All</option>
+          <option value="Industry">Industry</option>
+          <option value="Commercial">Commercial</option>
         </select>
       </div>
 
@@ -144,12 +123,12 @@ export default function ConsumerList({ searchQuery }) {
         </div>
       )}
 
-      {!loading && !error && filteredConsumers.length === 0 && (
+      {!loading && filteredConsumers.length === 0 && (
         <p className="text-gray-600">No consumer data available.</p>
       )}
 
       {!loading && filteredConsumers.length > 0 && (
-        <table className="min-w-full bg-white shadow-lg rounded-md overflow-hidden border border-gray-200">
+        <table className="min-w-full bg-white shadow-lg rounded-md border">
           <thead className="bg-blue-600 text-white">
             <tr>
               <th className="py-2 px-3">S.No</th>
@@ -168,10 +147,7 @@ export default function ConsumerList({ searchQuery }) {
                 <td className="py-2 text-blue-600 font-semibold">
                   <Link
                     to={`/consumer/${c.serviceNo}`}
-                    state={{
-                      scno: c.serviceNo,
-                      short_name: c.name,
-                    }}
+                    state={{ scno: c.serviceNo, short_name: c.name }}
                   >
                     {c.name}
                   </Link>
