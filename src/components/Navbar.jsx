@@ -34,7 +34,7 @@ export default function Navbar({
   const subToggles = isVarianceInsights ? ["M-F", "Sat", "Sun", "All"] : []
 
   return (
-    <div className="flex justify-end items-center bg-white shadow px-4 sm:px-6 py-2 border-b border-gray-300 min-h-[50px]">
+    <div className="flex justify-end items-center bg-white shadow px-4 sm:px-6 border-b border-gray-300 min-h-[50px]">
       {/* Left Section: Page Controls */}
       <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
         {/* Search bar for Consumer List */}

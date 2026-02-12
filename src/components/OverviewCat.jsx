@@ -59,7 +59,7 @@ export default function OverviewCat() {
   }
 
   return (
-    <div className="bg-white shadow-md rounded-2xl p-4 flex justify-between w-full">
+    <div className="bg-white shadow-md rounded-2xl p-2 pt-3 flex justify-between w-full">
       {/* Chart Section */}
       <div className="w-[35%]">
         <HighchartsReact highcharts={Highcharts} options={categoryOptions} />
