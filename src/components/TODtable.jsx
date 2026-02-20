@@ -6,12 +6,15 @@ export default function TODTable() {
   const [loading, setLoading] = useState(true)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const hasLoadedRef = useRef(false)
 
   const CACHE_KEY = "todTableData"
   const CACHE_TIMESTAMP_KEY = "todTableDataTimestamp"
   const CACHE_EXPIRY_HOURS = 12
+  const ITEMS_PER_PAGE = 100
+  const TABLE_MAX_HEIGHT = "475px"
 
   const categories = ["Peak-1", "Peak-2", "Normal", "Off-Peak"]
 
@@ -130,6 +133,7 @@ export default function TODTable() {
     setValueMax("")
     setSortMetric("percent")
     setSortOrder(null)
+    setCurrentPage(1)
   }
 
   // Compute filtered and sorted data based on single selected category filters
@@ -191,6 +195,54 @@ export default function TODTable() {
     return result
   }, [data, selectedCategory, percentMin, percentMax, valueMin, valueMax, sortMetric, sortOrder])
 
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE)
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredAndSortedData.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [filteredAndSortedData, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedCategory, percentMin, percentMax, valueMin, valueMax, sortMetric, sortOrder])
+
+  const getPagination = () => {
+    const pages = []
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "ellipsis", totalPages)
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(
+          1,
+          "ellipsis",
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages
+        )
+      } else {
+        pages.push(
+          1,
+          "ellipsis",
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          "ellipsis",
+          totalPages
+        )
+      }
+    }
+
+    return pages
+  }
+
+  const paginationItems = getPagination()
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -199,7 +251,7 @@ export default function TODTable() {
     )
   }
 
-  if (error) {
+  if (error && filteredAndSortedData.length === 0) {
     return (
       <div className="text-center text-red-600 p-4 bg-red-50 rounded-md shadow-sm">
         {error}
@@ -208,206 +260,255 @@ export default function TODTable() {
   }
 
   return (
-    <div className="relative bg-white p-3 rounded-lg shadow-md">
-      {isOffline && (
-        <div className="bg-yellow-200 text-yellow-900 text-center py-2 text-sm font-medium rounded-t-md">
-          ⚠️ You are offline — showing cached data
-        </div>
-      )}
+    <div>
+      <div className="bg-white p-3 rounded-lg shadow-md">
+        {isOffline && (
+          <div className="bg-yellow-200 text-yellow-900 p-2 rounded mb-4 text-center">
+            You are offline. Showing cached data if available.
+          </div>
+        )}
 
-      {/* Single-row Filters & Sort UI */}
-      <div className="flex flex-wrap items-center justify-around gap-2 mb-6">
-        {/* Category select */}
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-xs text-gray-600">Column</span>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-1 py-1 border rounded text-xs"
-          >
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Percent range */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-600">Percent</span>
-          <input
-            type="number"
-            step="any"
-            placeholder="min"
-            value={percentMin}
-            onChange={(e) => setPercentMin(e.target.value)}
-            className="w-[3vw] px-1 py-1 border rounded text-xs"
-          />
-          <span className="text-xs">-</span>
-          <input
-            type="number"
-            step="any"
-            placeholder="max"
-            value={percentMax}
-            onChange={(e) => setPercentMax(e.target.value)}
-            className="w-[3vw] px-1 py-1 border rounded text-xs"
-          />
-        </div>
-
-        {/* Value range */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-600">Value (MWh)</span>
-          <input
-            type="number"
-            step="any"
-            placeholder="min"
-            value={valueMin}
-            onChange={(e) => setValueMin(e.target.value)}
-            className="w-[4vw] px-1 py-1 border rounded text-xs"
-          />
-          <span className="text-xs">-</span>
-          <input
-            type="number"
-            step="any"
-            placeholder="max"
-            value={valueMax}
-            onChange={(e) => setValueMax(e.target.value)}
-            className="w-[4vw] px-1 py-1 border rounded text-xs"
-          />
-        </div>
-
-        <div className="flex gap-4">
-          {/* Sort metric */}
-          <div className="flex items-center gap-2 ml-1">
-            <span className="text-xs text-gray-600">Sort by</span>
+        {/* Single-row Filters & Sort UI */}
+        <div className="flex flex-wrap items-center justify-around gap-2 mb-6">
+          {/* Category select */}
+          <label className="flex items-center gap-2 text-sm flex-shrink-0">
+            <span className="text-xs text-gray-600">Column</span>
             <select
-              value={sortMetric}
-              onChange={(e) => setSortMetric(e.target.value)}
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-1 py-1 border rounded text-xs"
             >
-              <option value="percent">Percent</option>
-              <option value="value">Value</option>
-            </select>
-          </div>
-
-          {/* Sort order buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
-              title="Ascending"
-              className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-            >
-              ▲
-            </button>
-            <button
-              onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
-              title="Descending"
-              className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-            >
-              ▼
-            </button>
-          </div>
-        </div>    
-        {/* Refresh / clear button */}
-        <div>
-          <button
-            onClick={clearAll}
-            title="Clear filters & sorting"
-            className="px-2 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200"
-          >
-            ↻
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div>
-        <table className="w-full border border-gray-300 text-sm text-center">
-          <thead>
-            <tr className="bg-gray-100">
-              <th rowSpan={2} className="border px-3 py-2">S.No</th>
-              <th rowSpan={2} className="border px-3 py-2">Consumer</th>
-              <th colSpan={2} className="border px-3 py-2">Peak-1 <br /><span className="text-xs text-gray-600">(6 am - 10 am)</span></th>
-              <th colSpan={2} className="border px-3 py-2">Peak-2 <br /><span className="text-xs text-gray-600">(6 pm - 10 pm)</span></th>
-              <th colSpan={2} className="border px-3 py-2">Normal <br /><span className="text-xs text-gray-600">(3 pm - 6 pm) &<br />(10 pm - 12 pm)</span></th>
-              <th colSpan={2} className="border px-3 py-2">Off-Peak <br /><span className="text-xs text-gray-600">(12 am - 6 am) &<br />(10 am - 3 pm)</span></th>
-              <th rowSpan={2} className="border px-3 py-2">Entries (days)</th>
-              <th rowSpan={2} className="border px-3 py-2">Max Savings (₹)</th>
-            </tr>
-            <tr className="bg-gray-100">
-              {["Peak-1", "Peak-2", "Normal", "Off-Peak"].map((_, i) => (
-                <FragmentHeaders key={i} />
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAndSortedData.length === 0 ? (
-              <tr>
-                <td colSpan={12} className="py-6 text-gray-500">No rows match the current filters.</td>
-              </tr>
-            ) : (
-              filteredAndSortedData.map((row, idx) => (
-                <tr key={idx}>
-                  <td className="border px-3 py-2">{idx + 1}</td>
-                  <td className="border px-3 py-2 font-medium">
-                    <Link
-                      to={`/consumer/${row.SCNO}`}
-                      state={{
-                        scno: row.SCNO,
-                        short_name: row.Consumer,
-                      }}
-                      className="text-blue-600 font-semibold"
-                    >
-                      {row.Consumer} <span className="text-gray-500 text-xs">({row.SCNO})</span>
-                    </Link>
-                  </td>
+            </select>
+          </label>
 
-                  {/* Peak-1 */}
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWisePercentage?.["Peak-1"]) ? Number(row.TariffWisePercentage["Peak-1"]).toFixed(2) : "-"}%
-                  </td>
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-1"]) ? Number(row.TariffWiseConsumption_MWh["Peak-1"]).toLocaleString() : "-"}
-                  </td>
+          {/* Percent range */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="text-xs text-gray-600">Percent</span>
+            <input
+              type="number"
+              step="any"
+              placeholder="min"
+              value={percentMin}
+              onChange={(e) => setPercentMin(e.target.value)}
+              className="w-[3vw] px-1 py-1 border rounded text-xs"
+            />
+            <span className="text-xs">-</span>
+            <input
+              type="number"
+              step="any"
+              placeholder="max"
+              value={percentMax}
+              onChange={(e) => setPercentMax(e.target.value)}
+              className="w-[3vw] px-1 py-1 border rounded text-xs"
+            />
+          </div>
 
-                  {/* Peak-2 */}
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWisePercentage?.["Peak-2"]) ? Number(row.TariffWisePercentage["Peak-2"]).toFixed(2) : "-"}%
-                  </td>
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-2"]) ? Number(row.TariffWiseConsumption_MWh["Peak-2"]).toLocaleString() : "-"}
-                  </td>
+          {/* Value range */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="text-xs text-gray-600">Value (MWh)</span>
+            <input
+              type="number"
+              step="any"
+              placeholder="min"
+              value={valueMin}
+              onChange={(e) => setValueMin(e.target.value)}
+              className="w-[4vw] px-1 py-1 border rounded text-xs"
+            />
+            <span className="text-xs">-</span>
+            <input
+              type="number"
+              step="any"
+              placeholder="max"
+              value={valueMax}
+              onChange={(e) => setValueMax(e.target.value)}
+              className="w-[4vw] px-1 py-1 border rounded text-xs"
+            />
+          </div>
 
-                  {/* Normal */}
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWisePercentage?.["Normal"]) ? Number(row.TariffWisePercentage["Normal"]).toFixed(2) : "-"}%
-                  </td>
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_MWh?.["Normal"]) ? Number(row.TariffWiseConsumption_MWh["Normal"]).toLocaleString() : "-"}
-                  </td>
+          <div className="flex gap-4">
+            {/* Sort metric */}
+            <div className="flex items-center gap-2 ml-1 flex-shrink-0">
+              <span className="text-xs text-gray-600">Sort by</span>
+              <select
+                value={sortMetric}
+                onChange={(e) => setSortMetric(e.target.value)}
+                className="px-1 py-1 border rounded text-xs"
+              >
+                <option value="percent">Percent</option>
+                <option value="value">Value</option>
+              </select>
+            </div>
 
-                  {/* Off-Peak */}
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWisePercentage?.["Off-Peak"]) ? Number(row.TariffWisePercentage["Off-Peak"]).toFixed(2) : "-"}%
-                  </td>
-                  <td className="border px-3 py-2">
-                    {isNumber(row?.TariffWiseConsumption_MWh?.["Off-Peak"]) ? Number(row.TariffWiseConsumption_MWh["Off-Peak"]).toLocaleString() : "-"}
-                  </td>
+            {/* Sort order buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
+                title="Ascending"
+                className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
+                title="Descending"
+                className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+              >
+                ▼
+              </button>
+            </div>
+          </div>    
+          {/* Refresh / clear button */}
+          <div className="flex-shrink-0">
+            <button
+              onClick={clearAll}
+              title="Clear filters & sorting"
+              className="px-2 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200"
+            >
+              ↻
+            </button>
+          </div>
+        </div>
 
-                  {/* Entries (Days) */}
-                  <td className="border px-3 py-2">
-                    {row.DaysOfData ? Number(row.DaysOfData).toFixed(0) : "-"}
-                  </td>
+        {/* Table with fixed header and scrollable body */}
+        {paginatedData.length > 0 && (
+          <div className="bg-white shadow-lg rounded-md border overflow-hidden">
+            {/* Fixed height scroll container */}
+            <div style={{ maxHeight: TABLE_MAX_HEIGHT }} className="overflow-y-auto overflow-x-auto">
+              <table className="w-full border-collapse text-sm text-center">
+                <thead className="bg-gray-100 sticky top-0 z-10">
+                  <tr>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">S.No</th>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">Consumer</th>
+                    <th colSpan={2} className="border px-3 py-2">Peak-1 <br /><span className="text-xs text-gray-600">(6 am - 10 am)</span></th>
+                    <th colSpan={2} className="border px-3 py-2">Peak-2 <br /><span className="text-xs text-gray-600">(6 pm - 10 pm)</span></th>
+                    <th colSpan={2} className="border px-3 py-2">Normal <br /><span className="text-xs text-gray-600">(3 pm - 6 pm) &<br />(10 pm - 12 pm)</span></th>
+                    <th colSpan={2} className="border px-3 py-2">Off-Peak <br /><span className="text-xs text-gray-600">(12 am - 6 am) &<br />(10 am - 3 pm)</span></th>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">Entries (days)</th>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">Max Savings (₹)</th>
+                  </tr>
+                  <tr className="bg-gray-100">
+                    {["Peak-1", "Peak-2", "Normal", "Off-Peak"].map((_, i) => (
+                      <FragmentHeaders key={i} />
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 border-b">
+                      <td className="border px-3 py-2">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                      <td className="border px-3 py-2 font-medium">
+                        <Link
+                          to={`/consumer/${row.SCNO}`}
+                          state={{
+                            scno: row.SCNO,
+                            short_name: row.Consumer,
+                          }}
+                          className="text-blue-600 font-semibold"
+                        >
+                          {row.Consumer} <span className="text-gray-500 text-xs">({row.SCNO})</span>
+                        </Link>
+                      </td>
 
-                  {/* Max Savings */}
-                  <td className="border px-3 py-2 font-semibold">
-                    ₹{isNumber(row?.CostSavings) ? Number(row.CostSavings).toLocaleString() : "-"}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      {/* Peak-1 */}
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWisePercentage?.["Peak-1"]) ? Number(row.TariffWisePercentage["Peak-1"]).toFixed(2) : "-"}%
+                      </td>
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-1"]) ? Number(row.TariffWiseConsumption_MWh["Peak-1"]).toLocaleString() : "-"}
+                      </td>
+
+                      {/* Peak-2 */}
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWisePercentage?.["Peak-2"]) ? Number(row.TariffWisePercentage["Peak-2"]).toFixed(2) : "-"}%
+                      </td>
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWiseConsumption_MWh?.["Peak-2"]) ? Number(row.TariffWiseConsumption_MWh["Peak-2"]).toLocaleString() : "-"}
+                      </td>
+
+                      {/* Normal */}
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWisePercentage?.["Normal"]) ? Number(row.TariffWisePercentage["Normal"]).toFixed(2) : "-"}%
+                      </td>
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWiseConsumption_MWh?.["Normal"]) ? Number(row.TariffWiseConsumption_MWh["Normal"]).toLocaleString() : "-"}
+                      </td>
+
+                      {/* Off-Peak */}
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWisePercentage?.["Off-Peak"]) ? Number(row.TariffWisePercentage["Off-Peak"]).toFixed(2) : "-"}%
+                      </td>
+                      <td className="border px-3 py-2">
+                        {isNumber(row?.TariffWiseConsumption_MWh?.["Off-Peak"]) ? Number(row.TariffWiseConsumption_MWh["Off-Peak"]).toLocaleString() : "-"}
+                      </td>
+
+                      {/* Entries (Days) */}
+                      <td className="border px-3 py-2">
+                        {row.DaysOfData ? Number(row.DaysOfData).toFixed(0) : "-"}
+                      </td>
+
+                      {/* Max Savings */}
+                      <td className="border px-3 py-2 font-semibold">
+                        ₹{isNumber(row?.CostSavings) ? Number(row.CostSavings).toLocaleString() : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {paginatedData.length === 0 && !loading && (
+          <div className="py-6 text-gray-500 text-center">No rows match the current filters.</div>
+        )}
       </div>
+
+      {/* Pagination outside the container */}
+      {paginatedData.length > 0 && (
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center gap-3 bg-white border border-black px-4 py-1 rounded-full shadow-sm min-w-[420px] justify-center">
+            <button
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+              disabled={currentPage === 1}
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-30 cursor-pointer text-lg"
+            >
+              ‹
+            </button>
+
+            {paginationItems.map((item, index) =>
+              item === "ellipsis" ? (
+                <span key={index} className="text-blue-400 w-8 text-center">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(item)}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition
+                    ${
+                      currentPage === item
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "text-blue-700 hover:bg-blue-100"
+                    }`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              disabled={currentPage === totalPages}
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-30 cursor-pointer text-lg"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

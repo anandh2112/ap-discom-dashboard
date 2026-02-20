@@ -3,6 +3,8 @@ import { Link } from "react-router-dom"
 
 const CACHE_KEY_BASE = "varianceTableCache"
 const CACHE_EXPIRY_HOURS = 12
+const ITEMS_PER_PAGE = 100  // Reduced from 100 to 6
+const TABLE_MAX_HEIGHT = "475px"  // Reduced from 500px to 300px
 
 // Map subViewMode to the subcat parameter values
 const SUBKEY_MAP = {
@@ -18,6 +20,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Filter / sort state (these are local to the table and different from parent viewMode)
   const viewOptions = ["Average", "Average Peak", "Average Low"]
@@ -55,6 +58,7 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     setCategoryFilter("any")
     setSortMetric("average")
     setSortOrder(null)
+    setCurrentPage(1)
   }
 
   // Detect offline/online changes
@@ -418,6 +422,54 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
     sortOrder,
   ])
 
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE)
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredAndSortedData.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [filteredAndSortedData, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [view, avgMin, avgMax, hourMin, hourMax, valMin, valMax, pctMin, pctMax, categoryFilter, sortMetric, sortOrder])
+
+  const getPagination = () => {
+    const pages = []
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "ellipsis", totalPages)
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(
+          1,
+          "ellipsis",
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages
+        )
+      } else {
+        pages.push(
+          1,
+          "ellipsis",
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          "ellipsis",
+          totalPages
+        )
+      }
+    }
+
+    return pages
+  }
+
+  const paginationItems = getPagination()
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -435,295 +487,344 @@ export default function VarianceTable({ viewMode, subViewMode, selectedDate }) {
   }
 
   return (
-    <div className=" bg-white p-3 rounded-lg shadow-md">
-      {isOffline && (
-        <div className="bg-yellow-200 text-yellow-900 p-2 rounded mb-4 text-center">
-          You are offline. Showing cached data if available.
+    <div>
+      <div className="bg-white p-3 rounded-lg shadow-md">
+        {isOffline && (
+          <div className="bg-yellow-200 text-yellow-900 p-2 rounded mb-4 text-center">
+            You are offline. Showing cached data if available.
+          </div>
+        )}
+
+        {/* Filters & Sort (single row, same style) */}
+        <div className="flex flex-nowrap items-center justify-around overflow-x-auto pb-2">
+          {/* View select */}
+          <label className="flex items-center gap-2 text-sm flex-shrink-0">
+            <span className="text-xs text-gray-600">Col.</span>
+            <select
+              value={view}
+              onChange={(e) => setView(e.target.value)}
+              className="px-1 py-1 border rounded text-xs"
+            >
+              {viewOptions.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* Average filters (visible when Average is selected) */}
+          {view === "Average" && (
+            <>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs text-gray-600">Average (kWh)</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="min"
+                  value={avgMin}
+                  onChange={(e) => setAvgMin(e.target.value)}
+                  className="w-20 px-1 py-1 border rounded text-xs"
+                />
+                <span className="text-xs">-</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="max"
+                  value={avgMax}
+                  onChange={(e) => setAvgMax(e.target.value)}
+                  className="w-20 px-1 py-1 border rounded text-xs"
+                />
+              </div>
+
+              {/* Sort for Average */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs text-gray-600">Sort by</span>
+                <select
+                  value={sortMetric}
+                  onChange={(e) => setSortMetric(e.target.value)}
+                  className="px-1 py-1 border rounded text-xs"
+                >
+                  <option value="average">Average</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
+                  title="Ascending"
+                  className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
+                  title="Descending"
+                  className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+                >
+                  ▼
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Peak/Low filters (visible when Average Peak or Average Low is selected) */}
+          {(view === "Average Peak" || view === "Average Low") && (
+            <>
+              {/* Hour range */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs text-gray-600">Hour</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  placeholder="min"
+                  value={hourMin}
+                  onChange={(e) => setHourMin(e.target.value)}
+                  className="w-[3vw] px-1 py-1 border rounded text-xs"
+                />
+                <span className="text-xs">-</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  placeholder="max"
+                  value={hourMax}
+                  onChange={(e) => setHourMax(e.target.value)}
+                  className="w-[3vw] px-1 py-1 border rounded text-xs"
+                />
+              </div>
+
+              {/* Value range */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs text-gray-600">Value</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="min"
+                  value={valMin}
+                  onChange={(e) => setValMin(e.target.value)}
+                  className="w-[4vw] px-1 py-1 border rounded text-xs"
+                />
+                <span className="text-xs">-</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="max"
+                  value={valMax}
+                  onChange={(e) => setValMax(e.target.value)}
+                  className="w-[4vw] px-1 py-1 border rounded text-xs"
+                />
+              </div>
+
+              {/* Percent range */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs text-gray-600">%</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="min"
+                  value={pctMin}
+                  onChange={(e) => setPctMin(e.target.value)}
+                  className="w-[3vw] px-1 py-1 border rounded text-xs"
+                />
+                <span className="text-xs">-</span>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="max"
+                  value={pctMax}
+                  onChange={(e) => setPctMax(e.target.value)}
+                  className="w-[3vw] px-1 py-1 border rounded text-xs"
+                />
+              </div>
+
+              {/* Category dropdown */}
+              <label className="flex items-center gap-1 text-xs flex-shrink-0">
+                <span className="text-xs text-gray-600">Category</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-1 py-1 border rounded text-xs"
+                >
+                  {categoryOptions.map((c) => (
+                    <option key={c} value={c}>{c.replace("_", " ")}</option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Sort controls for Peak/Low */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-600">Sort by</span>
+                <select
+                  value={sortMetric}
+                  onChange={(e) => setSortMetric(e.target.value)}
+                  className="px-1 py-1 border rounded text-xs"
+                >
+                  <option value="hour">Hour</option>
+                  <option value="value">Value</option>
+                  <option value="percent">%</option>
+                  <option value="category">Category</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
+                  title="Ascending"
+                  className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
+                  title="Descending"
+                  className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+                >
+                  ▼
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Refresh / clear button */}
+          <div className="flex-shrink-0">
+            <button
+              onClick={clearAll}
+              title="Clear filters & sorting"
+              className="px-2 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200"
+            >
+              ↻
+            </button>
+          </div>
+        </div>
+
+        {/* Table with fixed header and scrollable body */}
+        {paginatedData.length > 0 && (
+          <div className="bg-white shadow-lg rounded-md border overflow-hidden">
+            {/* Fixed height scroll container */}
+            <div style={{ maxHeight: TABLE_MAX_HEIGHT }} className="overflow-y-auto overflow-x-auto">
+              <table className="w-full border-collapse text-sm text-center">
+                <thead className="bg-gray-100 sticky top-0 z-10">
+                  <tr>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">S.No</th>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">Consumer</th>
+                    <th rowSpan={2} className="border px-3 py-2 align-middle">
+                      Average <br />(kWh)
+                    </th>
+                    <th colSpan={4} className="border px-3 py-2">Average Peak <span className="text-green-600">▲</span></th>
+                    <th colSpan={4} className="border px-3 py-2">Average Low <span className="text-red-600">▼</span></th>
+                  </tr>
+                  <tr className="bg-gray-100">
+                    {["Peak", "Low"].map((type) => (
+                      <React.Fragment key={type}>
+                        <th className="border px-3 py-2">Hour</th>
+                        <th className="border px-3 py-2">Value <br />(kWh)</th>
+                        <th className="border px-3 py-2">% </th>
+                        <th className="border px-3 py-2">Category</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedData.map((row, i) => {
+                    const peakVal = row.peak.percentValue ?? 0
+                    const lowVal = row.low.percentValue ?? 0
+                    const highlightPeak = peakVal > lowVal
+                    const highlightLow = lowVal > peakVal
+
+                    return (
+                      <tr key={i} className="hover:bg-gray-50 border-b">
+                        <td className="border px-3 py-2">{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</td>
+                        <td className="border px-3 py-2 font-medium">
+                          <Link
+                            to={`/consumer/${row.serviceNo}`}
+                            state={{ scno: row.serviceNo, short_name: row.consumer }}
+                            className="text-blue-600 font-semibold"
+                          >
+                            {row.consumer} <span className="text-gray-500 text-xs">({row.serviceNo})</span>
+                          </Link>
+                        </td>
+                        <td className="border px-3 py-2">{row.average ?? "-"}</td>
+
+                        {/* Peak */}
+                        <td className="border px-3 py-2">{row.peak.hour ?? "-"}</td>
+                        <td className="border px-3 py-2">{row.peak.value ?? "-"}</td>
+                        <td
+                          className={`border px-3 py-2 font-medium ${
+                            highlightPeak ? "bg-green-100 text-green-700 font-semibold" : ""
+                          }`}
+                        >
+                          {row.peak.percent ?? "-"}
+                        </td>
+                        <td className="border px-3 py-2 capitalize">{row.peak.category ?? "-"}</td>
+
+                        {/* Low */}
+                        <td className="border px-3 py-2">{row.low.hour ?? "-"}</td>
+                        <td className="border px-3 py-2">{row.low.value ?? "-"}</td>
+                        <td
+                          className={`border px-3 py-2 font-medium ${
+                            highlightLow ? "bg-red-100 text-red-700 font-semibold" : ""
+                          }`}
+                        >
+                          {row.low.percent ?? "-"}
+                        </td>
+                        <td className="border px-3 py-2 capitalize">{row.low.category ?? "-"}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {paginatedData.length === 0 && !loading && (
+          <div className="py-6 text-gray-500 text-center">No rows match the current filters.</div>
+        )}
+      </div>
+
+      {/* Pagination outside the container */}
+      {paginatedData.length > 0 && (
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center gap-3 bg-white border border-black px-4 py-1 rounded-full shadow-sm min-w-[420px] justify-center">
+            <button
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+              disabled={currentPage === 1}
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-30 cursor-pointer text-lg"
+            >
+              ‹
+            </button>
+
+            {paginationItems.map((item, index) =>
+              item === "ellipsis" ? (
+                <span key={index} className="text-blue-400 w-8 text-center">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(item)}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition
+                    ${
+                      currentPage === item
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "text-blue-700 hover:bg-blue-100"
+                    }`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              disabled={currentPage === totalPages}
+              className="text-blue-600 hover:text-blue-800 disabled:opacity-30 cursor-pointer text-lg"
+            >
+              ›
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Filters & Sort (single row, same style) */}
-      <div className="flex flex-nowrap items-center justify-around mb-6">
-        {/* View select */}
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-xs text-gray-600">Col.</span>
-          <select
-            value={view}
-            onChange={(e) => setView(e.target.value)}
-            className="px-1 py-1 border rounded text-xs"
-          >
-            {viewOptions.map((v) => (
-              <option key={v} value={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Average filters (visible when Average is selected) */}
-        {view === "Average" && (
-          <>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-600">Average (kWh)</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="min"
-                value={avgMin}
-                onChange={(e) => setAvgMin(e.target.value)}
-                className="w-20 px-1 py-1 border rounded text-xs"
-              />
-              <span className="text-xs">-</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="max"
-                value={avgMax}
-                onChange={(e) => setAvgMax(e.target.value)}
-                className="w-20 px-1 py-1 border rounded text-xs"
-              />
-            </div>
-
-            {/* Sort for Average */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-600">Sort by</span>
-              <select
-                value={sortMetric}
-                onChange={(e) => setSortMetric(e.target.value)}
-                className="px-1 py-1 border rounded text-xs"
-              >
-                <option value="average">Average</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
-                title="Ascending"
-                className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-              >
-                ▲
-              </button>
-              <button
-                onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
-                title="Descending"
-                className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-              >
-                ▼
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Peak/Low filters (visible when Average Peak or Average Low is selected) */}
-        {(view === "Average Peak" || view === "Average Low") && (
-          <>
-            {/* Hour range */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-600">Hour</span>
-              <input
-                type="number"
-                min={0}
-                max={23}
-                placeholder="min"
-                value={hourMin}
-                onChange={(e) => setHourMin(e.target.value)}
-                className="w-[3vw] px-1 py-1 border rounded text-xs"
-              />
-              <span className="text-xs">-</span>
-              <input
-                type="number"
-                min={0}
-                max={23}
-                placeholder="max"
-                value={hourMax}
-                onChange={(e) => setHourMax(e.target.value)}
-                className="w-[3vw] px-1 py-1 border rounded text-xs"
-              />
-            </div>
-
-            {/* Value range */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-600">Value</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="min"
-                value={valMin}
-                onChange={(e) => setValMin(e.target.value)}
-                className="w-[4vw] px-1 py-1 border rounded text-xs"
-              />
-              <span className="text-xs">-</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="max"
-                value={valMax}
-                onChange={(e) => setValMax(e.target.value)}
-                className="w-[4vw] px-1 py-1 border rounded text-xs"
-              />
-            </div>
-
-            {/* Percent range */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-600">%</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="min"
-                value={pctMin}
-                onChange={(e) => setPctMin(e.target.value)}
-                className="w-[3vw] px-1 py-1 border rounded text-xs"
-              />
-              <span className="text-xs">-</span>
-              <input
-                type="number"
-                step="any"
-                placeholder="max"
-                value={pctMax}
-                onChange={(e) => setPctMax(e.target.value)}
-                className="w-[3vw] px-1 py-1 border rounded text-xs"
-              />
-            </div>
-
-            {/* Category dropdown */}
-            <label className="flex items-center gap-1 text-xs">
-              <span className="text-xs text-gray-600">Category</span>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-1 py-1 border rounded text-xs"
-              >
-                {categoryOptions.map((c) => (
-                  <option key={c} value={c}>{c.replace("_", " ")}</option>
-                ))}
-              </select>
-            </label>
-
-            {/* Sort controls for Peak/Low */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600">Sort by</span>
-              <select
-                value={sortMetric}
-                onChange={(e) => setSortMetric(e.target.value)}
-                className="px-1 py-1 border rounded text-xs"
-              >
-                <option value="hour">Hour</option>
-                <option value="value">Value</option>
-                <option value="percent">%</option>
-                <option value="category">Category</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setSortOrder((prev) => (prev === "asc" ? null : "asc"))}
-                title="Ascending"
-                className={`px-2 py-1 rounded text-sm ${sortOrder === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-              >
-                ▲
-              </button>
-              <button
-                onClick={() => setSortOrder((prev) => (prev === "desc" ? null : "desc"))}
-                title="Descending"
-                className={`px-2 py-1 rounded text-sm ${sortOrder === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
-              >
-                ▼
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Refresh / clear button */}
-        <div>
-          <button
-            onClick={clearAll}
-            title="Clear filters & sorting"
-            className="px-2 py-1 rounded text-sm bg-gray-100 hover:bg-gray-200"
-          >
-            ↻
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-300 text-sm text-center">
-          <thead>
-            <tr className="bg-gray-100">
-              <th rowSpan={2} className="border px-3 py-2 align-middle">S.No</th>
-              <th rowSpan={2} className="border px-3 py-2 align-middle">Consumer</th>
-              <th rowSpan={2} className="border px-3 py-2 align-middle">
-                Average <br />(kWh)
-              </th>
-              <th colSpan={4} className="border px-3 py-2">Average Peak <span className="text-green-600">▲</span></th>
-              <th colSpan={4} className="border px-3 py-2">Average Low <span className="text-red-600">▼</span></th>
-            </tr>
-            <tr className="bg-gray-100">
-              {["Peak", "Low"].map((type) => (
-                <React.Fragment key={type}>
-                  <th className="border px-3 py-2">Hour</th>
-                  <th className="border px-3 py-2">Value <br />(kWh)</th>
-                  <th className="border px-3 py-2">% </th>
-                  <th className="border px-3 py-2">Category</th>
-                </React.Fragment>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAndSortedData.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="py-6 text-gray-500">No rows match the current filters.</td>
-              </tr>
-            ) : (
-              filteredAndSortedData.map((row, i) => {
-                const peakVal = row.peak.percentValue ?? 0
-                const lowVal = row.low.percentValue ?? 0
-                const highlightPeak = peakVal > lowVal
-                const highlightLow = lowVal > peakVal
-
-                return (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="border px-3 py-2">{i + 1}</td>
-                    <td className="border px-3 py-2 font-medium">
-                      <Link
-                        to={`/consumer/${row.serviceNo}`}
-                        state={{ scno: row.serviceNo, short_name: row.consumer }}
-                        className="text-blue-600 font-semibold"
-                      >
-                        {row.consumer} <span className="text-gray-500 text-xs">({row.serviceNo})</span>
-                      </Link>
-                    </td>
-                    <td className="border px-3 py-2">{row.average ?? "-"}</td>
-
-                    {/* Peak */}
-                    <td className="border px-3 py-2">{row.peak.hour ?? "-"}</td>
-                    <td className="border px-3 py-2">{row.peak.value ?? "-"}</td>
-                    <td
-                      className={`border px-3 py-2 font-medium ${
-                        highlightPeak ? "bg-green-100 text-green-700 font-semibold" : ""
-                      }`}
-                    >
-                      {row.peak.percent ?? "-"}
-                    </td>
-                    <td className="border px-3 py-2 capitalize">{row.peak.category ?? "-"}</td>
-
-                    {/* Low */}
-                    <td className="border px-3 py-2">{row.low.hour ?? "-"}</td>
-                    <td className="border px-3 py-2">{row.low.value ?? "-"}</td>
-                    <td
-                      className={`border px-3 py-2 font-medium ${
-                        highlightLow ? "bg-red-100 text-red-700 font-semibold" : ""
-                      }`}
-                    >
-                      {row.low.percent ?? "-"}
-                    </td>
-                    <td className="border px-3 py-2 capitalize">{row.low.category ?? "-"}</td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
