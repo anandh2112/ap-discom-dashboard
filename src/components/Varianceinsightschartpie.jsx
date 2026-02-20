@@ -10,36 +10,54 @@ export default function VarianceInsightsChartPie({
   const [peakData, setPeakData] = useState([]);
   const [lowData, setLowData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [fetchedData, setFetchedData] = useState(null); // store API response
 
-  // Label mapping
+  // Label mapping (fixed order)
   const increaseLabels = ["Very Low", "Low", "Medium", "High", "Very High"];
   const decreaseLabels = ["Very Low", "Low", "Medium", "High", "Very High"];
 
-  // Fetch correct URL based on viewMode
-  const getApiUrl = () => {
-    if (viewMode === "All") {
-      return `https://ee.elementsenergies.com/api/fetchAllHighLowAvgChartMFSTSD`;
-    }
-    if (viewMode === "Year") {
-      const year = selectedDate?.split("-")[0];
-      return `https://ee.elementsenergies.com/api/fetchYearlyHighLowAvgChartMFSTSD?year=${year}`;
-    }
-    if (viewMode === "Month") {
-      const month = selectedDate?.slice(0, 7);
-      return `https://ee.elementsenergies.com/api/fetchMonthlyHighLowAvgChartMFSTSD?month=${month}`;
-    }
-    return null;
+  // Map subViewMode to API subcat values
+  const getSubcat = () => {
+    if (subViewMode === "M-F") return "mf";
+    if (subViewMode === "Sat") return "sat";
+    if (subViewMode === "Sun") return "sun";
+    if (subViewMode === "All") return "all";
+    return "all";
   };
 
-  // Map API data to chart format
-  const mapData = (obj, labels) =>
-    Object.keys(obj).map((key, i) => ({
-      name: labels[i],
-      y: obj[key],
-    }));
+  // Build single endpoint URL
+  const getApiUrl = () => {
+    const base =
+      "https://ee.elementsenergies.com/api/fetchHighLowAvgChartMFSTSD";
 
-  // Fetch data only when viewMode or selectedDate changes
+    const subcat = getSubcat();
+
+    if (viewMode === "All") {
+      return `${base}?category=all&subcat=${subcat}`;
+    }
+
+    if (viewMode === "Year") {
+      const year = selectedDate?.split("-")[0];
+      return `${base}?category=year&subcat=${subcat}&date=${year}`;
+    }
+
+    if (viewMode === "Month") {
+      const month = selectedDate?.slice(0, 7);
+      return `${base}?category=month&subcat=${subcat}&date=${month}`;
+    }
+
+    return `${base}?category=all&subcat=${subcat}`;
+  };
+
+  // Map API object to chart format (preserving backend order)
+  const mapData = (obj, labels) => {
+    const values = Object.values(obj || {});
+    return values.map((value, i) => ({
+      name: labels[i] || `Range ${i + 1}`,
+      y: value,
+    }));
+  };
+
+  // Fetch data when dependencies change
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -47,7 +65,12 @@ export default function VarianceInsightsChartPie({
         const url = getApiUrl();
         const res = await fetch(url);
         const json = await res.json();
-        setFetchedData(json); // save full response
+
+        const inc = json.percent_increase_from_avg || {};
+        const dec = json.percent_decrease_from_avg || {};
+
+        setPeakData(mapData(inc, increaseLabels));
+        setLowData(mapData(dec, decreaseLabels));
       } catch (e) {
         console.error("Pie fetch error:", e);
       } finally {
@@ -56,21 +79,7 @@ export default function VarianceInsightsChartPie({
     };
 
     fetchData();
-  }, [viewMode, selectedDate]);
-
-  // Update chart data whenever subViewMode or fetchedData changes
-  useEffect(() => {
-    if (!fetchedData) return;
-
-    const viewKey = subViewMode === "M-F" ? "Mon-Fri" : subViewMode;
-    const selectedData = fetchedData[viewKey] || {};
-
-    const inc = selectedData.percent_increase_from_avg || {};
-    const dec = selectedData.percent_decrease_from_avg || {};
-
-    setPeakData(mapData(inc, increaseLabels));
-    setLowData(mapData(dec, decreaseLabels));
-  }, [subViewMode, fetchedData]);
+  }, [viewMode, subViewMode, selectedDate]);
 
   const createOptions = (title, data) => ({
     chart: { type: "pie" },

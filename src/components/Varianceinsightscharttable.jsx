@@ -1,35 +1,51 @@
 import { useEffect, useState } from "react";
 
 export default function VarianceInsightsChartTable({ viewMode, subViewMode, selectedDate }) {
-  const [fetchedData, setFetchedData] = useState(null); // store full API response
-  const [tableData, setTableData] = useState(null); // store data for current subViewMode
+  const [tableData, setTableData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Map subViewMode to API keys
+  // Map subViewMode to API subcat values
   const subViewMap = {
-    All: "All",
-    "M-F": "Mon-Fri",
-    Sat: "Sat",
-    Sun: "Sun",
+    All: "all",
+    "M-F": "mf",
+    Sat: "sat",
+    Sun: "sun",
   };
 
-  // Get API URL based on viewMode and selectedDate
+  // Build API URL dynamically
   const getApiUrl = () => {
-    if (viewMode === "All") {
-      return "https://ee.elementsenergies.com/api/fetchAllHighLowAvgChartTableMFSTSD";
-    }
+    const baseUrl = "https://ee.elementsenergies.com/api/fetchHighLowAvgChartTable";
+
+    const categoryMap = {
+      All: "all",
+      Year: "year",
+      Month: "month",
+    };
+
+    const category = categoryMap[viewMode];
+    const subcat = subViewMap[subViewMode] || "all";
+
+    if (!category) return null;
+
+    let url = `${baseUrl}?category=${category}&subcat=${subcat}`;
+
     if (viewMode === "Year") {
-      const year = selectedDate ? new Date(selectedDate).getFullYear() : new Date().getFullYear();
-      return `https://ee.elementsenergies.com/api/fetchYearlyHighLowAvgChartTableMFSTSD?year=${year}`;
+      const year = selectedDate
+        ? new Date(selectedDate).getFullYear()
+        : new Date().getFullYear();
+      url += `&date=${year}`;
     }
+
     if (viewMode === "Month") {
-      const month = selectedDate ? new Date(selectedDate).toISOString().slice(0, 7) : new Date().toISOString().slice(0, 7);
-      return `https://ee.elementsenergies.com/api/fetchMonthlyHighLowAvgChartTableMFSTSD?month=${month}`;
+      const month = selectedDate
+        ? new Date(selectedDate).toISOString().slice(0, 7)
+        : new Date().toISOString().slice(0, 7);
+      url += `&date=${month}`;
     }
-    return null;
+
+    return url;
   };
 
-  // Fetch data whenever viewMode or selectedDate changes
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -41,14 +57,9 @@ export default function VarianceInsightsChartTable({ viewMode, subViewMode, sele
         if (!res.ok) throw new Error("Failed to fetch data");
 
         const data = await res.json();
-        setFetchedData(data);
-
-        // Immediately set tableData for current subViewMode
-        const key = subViewMap[subViewMode] || "All";
-        setTableData(data[key]);
+        setTableData(data);
       } catch (err) {
         console.error("Table fetch error:", err);
-        setFetchedData(null);
         setTableData(null);
       } finally {
         setLoading(false);
@@ -56,14 +67,7 @@ export default function VarianceInsightsChartTable({ viewMode, subViewMode, sele
     };
 
     fetchData();
-  }, [viewMode, selectedDate]);
-
-  // Update tableData whenever subViewMode changes
-  useEffect(() => {
-    if (!fetchedData) return;
-    const key = subViewMap[subViewMode] || "All";
-    setTableData(fetchedData[key]);
-  }, [subViewMode, fetchedData]);
+  }, [viewMode, subViewMode, selectedDate]);
 
   const increase = tableData?.percentIncreaseStats || {};
   const decrease = tableData?.percentDecreaseStats || {};
@@ -85,17 +89,33 @@ export default function VarianceInsightsChartTable({ viewMode, subViewMode, sele
 
           <tbody>
             <tr>
-              <td className="border px-2 py-1 font-medium">Average Upward Variance</td>
-              <td className="border px-2 py-1">{increase.highest ?? "-" }%</td>
-              <td className="border px-2 py-1">{increase.lowest ?? "-" }%</td>
-              <td className="border px-2 py-1">{increase.average ?? "-" }%</td>
+              <td className="border px-2 py-1 font-medium">
+                Average Upward Variance
+              </td>
+              <td className="border px-2 py-1">
+                {increase.highest !== undefined ? `${increase.highest}%` : "-"}
+              </td>
+              <td className="border px-2 py-1">
+                {increase.lowest !== undefined ? `${increase.lowest}%` : "-"}
+              </td>
+              <td className="border px-2 py-1">
+                {increase.average !== undefined ? `${increase.average}%` : "-"}
+              </td>
             </tr>
 
             <tr>
-              <td className="border px-2 py-1 font-medium">Average Downward Variance</td>
-              <td className="border px-2 py-1">{decrease.highest ?? "-" }%</td>
-              <td className="border px-2 py-1">{decrease.lowest ?? "-" }%</td>
-              <td className="border px-2 py-1">{decrease.average ?? "-" }%</td>
+              <td className="border px-2 py-1 font-medium">
+                Average Downward Variance
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.highest !== undefined ? `${decrease.highest}%` : "-"}
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.lowest !== undefined ? `${decrease.lowest}%` : "-"}
+              </td>
+              <td className="border px-2 py-1">
+                {decrease.average !== undefined ? `${decrease.average}%` : "-"}
+              </td>
             </tr>
           </tbody>
         </table>

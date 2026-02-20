@@ -67,18 +67,18 @@ export default function TODPie() {
       const percentages = json.HighConsumptionTariffPercentages
       const total = json.TotalConsumers || 0
 
-      // ✅ Prepare pie data (from counts)
+      // ✅ Prepare pie data with explicit colors
       const chartData = [
-        { name: "Peak", y: counts["Peak"] },
-        { name: "Normal", y: counts["Normal"] },
-        { name: "Off-Peak", y: counts["Off-Peak"] },
+        { name: "Peak", y: counts["Peak"], color: "#F77B72" },
+        { name: "Off-Peak", y: counts["Off-Peak"], color: "#81C784" },
+        { name: "Normal", y: counts["Normal"], color: "#FFB74C" },
       ]
 
       // ✅ Prepare table data
       const tableFormatted = [
         { name: "Peak", count: counts["Peak"], percentage: percentages["Peak"] },
-        { name: "Normal", count: counts["Normal"], percentage: percentages["Normal"] },
         { name: "Off-Peak", count: counts["Off-Peak"], percentage: percentages["Off-Peak"] },
+        { name: "Normal", count: counts["Normal"], percentage: percentages["Normal"] },
       ]
 
       setData(chartData)
@@ -129,9 +129,7 @@ export default function TODPie() {
     series: [
       {
         name: "TOD Split",
-        colorByPoint: true,
         data: data,
-        colors: ["#FF8042", "#00C49F", "#0088FE"],
       },
     ],
     credits: { enabled: false },
@@ -185,7 +183,7 @@ export default function TODPie() {
               {tableData.map((item, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="border px-3 py-2 font-medium">{item.name}</td>
-                  <td className="border px-3 py-2">{item.count ?? item.value ?? "-"}</td>
+                  <td className="border px-3 py-2">{item.count ?? "-"}</td>
                   <td className="border px-3 py-2">{item.percentage ?? "-"}</td>
                 </tr>
               ))}
